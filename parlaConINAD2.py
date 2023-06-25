@@ -383,15 +383,6 @@ if os.path.exists("INAD.cfg") is False:
     print("- scegliere una password")
     print("- inserire i dati di configurazione del client e-service PDND di INAD;")
     print("- indicare il nome del file della chiave privata.")
-#    passw = pwinput.pwinput(prompt = "Scegli una password: ")
-#    passw2 = pwinput.pwinput(prompt= "Ripeti la password: ")
-#    while passw != passw2:
-#        print("Le password non coincidono. Ripeti.")
-#        passw = pwinput.pwinput(prompt = "Scegli una password: ")
-#        passw2 = pwinput.pwinput(prompt= "Ripeti la password: ")
-#    password = passw.encode()
-#    chiave = base64.urlsafe_b64encode(kdf().derive(password))
-#    password = b""
     chiave = imposta_password()
     print("Password impostata. \nAnnotala in un luogo segreto e sicuro: "\
           "NON potrai recuperarla in alcun modo.")
