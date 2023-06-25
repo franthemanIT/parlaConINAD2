@@ -1,5 +1,6 @@
 '''Script per l'interrogazione di INAD (Indice Nazionale dei Domicili Digitali) tramite API.
-Per l'autenticazione si fa riferimento alla PDND (Piattaforma Digitale Nazionale Dati), secondo il ModI.
+Per l'autenticazione si fa riferimento alla PDND (Piattaforma Digitale Nazionale Dati),
+secondo il ModI.
 Autore: Francesco Del Castillo'''
 import datetime
 import sys
@@ -68,7 +69,7 @@ def chiediCF():
         else:
             print("Codice fiscale non valido.")
     return x
-        
+
 def chiediMail():
     '''Chiede di inserire un indirizzo e-mail e valida il formato.'''
     ottieniMail = False
@@ -81,11 +82,13 @@ def chiediMail():
     return x
 
 def chiediData():
-    '''Chiede di inserire una data G/M/A o G-M-A e la restituisce AAAA-MM-GG'''
-    x = pyip.inputDate(prompt = "Inserisci la data alla quale verificare: ", formats=["%d/%m/%y", "%d/%m/%Y", "%d-%m-%y", "%d-%m-%Y"])
+    '''Chiede di inserire una data G/M/A o G-M-A
+    e la restituisce AAAA-MM-GG'''
+    x = pyip.inputDate(prompt = "Inserisci la data alla quale verificare: ",
+        formats=["%d/%m/%y", "%d/%m/%Y", "%d-%m-%y", "%d-%m-%Y"])
     y = x.strftime("%Y-%m-%d")
     return y
-    
+
 # elenco di parole da interpretare come risposta affermativa in caso di domanda
 listaOK = ["sì", "SI", "S", "s", "Sì", "OK", "si"]
 
@@ -201,7 +204,8 @@ def impostaPassword():
     rePassword = "^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!#$%&?].*)(?=.*[\W]).{8,20}$"
     passw = ""
     while bool(re.match(rePassword, passw)) is False:
-        print("Scegli una password. Fra 8 e 20 caratteri con una maiuscola, una minuscola, un numero e un carattere speciale.")
+        print("Scegli una password. Fra 8 e 20 caratteri con una maiuscola, \
+            una minuscola, un numero e un carattere speciale.")
         passw = pwinput.pwinput(prompt = "Scegli una password: ")
         passw2 = pwinput.pwinput(prompt= "Ripeti la password: ")
         while passw != passw2:
@@ -303,7 +307,7 @@ def verificaDomicilio(token, cf, ref, mail, data):
     with open(logFileName, "a+") as logFile:
         requestTime=timestamp()
         logRequest(
-            logFile, requestTime, "GET", "verifica", 
+            logFile, requestTime, "GET", "verifica",
             "richiesta verifica del domicilio digitale "+mail[:3]+"***"
             )
         r = requests.get(url, headers = headers, params = parametri, timeout=100)
@@ -323,7 +327,7 @@ def caricaLista(token, lista, ref):
     with open(logFileName, "a+") as logFile:
         requestTime=timestamp()
         logRequest(
-            logFile, requestTime, "POST", "carica lista di CF", 
+            logFile, requestTime, "POST", "carica lista di CF",
             "richiesta verifica massiva per "+ref
             )
         r = requests.post(url, headers = headers, json = payload, timeout=100)
@@ -377,7 +381,8 @@ durataToken = 86400
 print("Benvenuto "+callingUser+".")
 if os.path.exists("INAD.cfg") is False:
     print("Il programma non è configurato.")
-    print("Copia il file della chiave privata associata alla chiave pubblica del client e-service INAD nella cartella di questo programma.")
+    print("Copia il file della chiave privata associata alla chiave pubblica \
+        del client e-service INAD nella cartella di questo programma.")
     print("Ti chiederò di: ")
     print("- scegliere una password")
     print("- inserire i dati di configurazione del client e-service PDND di INAD;")
@@ -392,7 +397,8 @@ if os.path.exists("INAD.cfg") is False:
 #    chiave = base64.urlsafe_b64encode(kdf().derive(password))
 #    password = b""
     chiave = impostaPassword()
-    print("Password impostata. \nAnnotala in un luogo segreto e sicuro: NON potrai recuperarla in alcun modo.")
+    print("Password impostata. \nAnnotala in un luogo segreto e sicuro: \
+        NON potrai recuperarla in alcun modo.")
     print("Configuriamo i dati del client e-service di INAD. Li trovi nel back-office della PDND.")
     #seguono i parametri che servono per contattare il client e-service INAD su PDND.
     #alcuni sono predefiniti e non vengono chiesti.
@@ -427,16 +433,21 @@ if os.path.exists("INAD.cfg") is False:
             chiaveTrovata = True
             print("File trovato.")
             cifraFile(nomeFileChiave, chiave, "chiave.priv")
-            print("Ho configurato la chiave in un file cifrato. Cancella il file " + nomeFileChiave + " dalla cartella del programma.")
+            print("Ho configurato la chiave in un file cifrato. \
+                Cancella il file " + nomeFileChiave + " dalla cartella del programma.")
         else:
             nomeFileChiave = input(
-                "File "+ nomeFileChiave + "non trovato. Verifica e inserisci di nuovo il nome del file della chiave privata: "
+                "File "+ nomeFileChiave + "non trovato. Verifica e \
+                inserisci di nuovo il nome del file della chiave privata: "
                 )
-    print("La configurazione è terminata. \nRicorda la password per avviare i programmi di interazione con INAD.")
+    print("La configurazione è terminata. \n\
+        Ricorda la password per avviare i programmi di interazione con INAD.")
 elif os.path.exists("chiave.priv") is False:
-    print("IL programma è configurato a metà. Manca la chiave privata da usare per il service e-client INAD.")
+    print("IL programma è configurato a metà. Manca la chiave privata \
+        da usare per il service e-client INAD.")
     print("Ti chiederò di inserire la password precedentemente scelta.")
-    print("Se non la ricordi, cancella il file \'INAD.cfg\' dalla cartella del programma e avvia di nuovo l'installazione.")
+    print("Se non la ricordi, cancella il file \'INAD.cfg\' \
+        dalla cartella del programma e avvia di nuovo l'installazione.")
     passw = pwinput.pwinput()
     passw2 = pwinput.pwinput(prompt= "Ripeti la password: ")
     while passw != passw2:
@@ -447,7 +458,8 @@ elif os.path.exists("chiave.priv") is False:
     chiave = base64.urlsafe_b64encode(kdf().derive(password))
     password=b""
     print("Le password coincidono.")
-    print("Copia il file con la chiave privata associata al client e-service INAD nella cartella del programma.")
+    print("Copia il file con la chiave privata associata \
+        al client e-service INAD nella cartella del programma.")
     nomeFileChiave = input("Nome del file della chiave privata (es.: key.priv): ")
     chiaveTrovata = False
     while chiaveTrovata is False:
@@ -455,15 +467,19 @@ elif os.path.exists("chiave.priv") is False:
             chiaveTrovata = True
             print("File trovato.")
             cifraFile(nomeFileChiave, chiave, "chiave.priv")
-            print("Ho configurato la chiave in un file cifrato. Cancella il file " + nomeFileChiave + " dalla cartella del programma.")
+            print("Ho configurato la chiave in un file cifrato. \
+                Cancella il file " + nomeFileChiave + " dalla cartella del programma.")
         else:
             nomeFileChiave = input(
-                "File "+ nomeFileChiave + "non trovato. Verifica e inserisci di nuovo il nome del file della chiave privata: "
+                "File "+ nomeFileChiave + "non trovato. \
+                Verifica e inserisci di nuovo il nome del file della chiave privata: "
                 )
-    print("La configurazione è terminata. \nRicorda la password per avviare i programmi di interazione con INAD.")
+    print("La configurazione è terminata. \n\
+        Ricorda la password per avviare i programmi di interazione con INAD.")
 else:
     print("Il programma sembra già configurato.")
-    print("Se non ricordi la password cancella dalla cartella del programma i file \'INAD.cfg\' e \'chiave.priv\' e ripeti l'installazione.")
+    print("Se non ricordi la password cancella dalla cartella del programma \
+    i file \'INAD.cfg\' e \'chiave.priv\' e ripeti l'installazione.")
 
 #####################################
 ### AVVIO INTERAZIONE CON INAD  #####
@@ -495,7 +511,12 @@ continuare = True
 while continuare is True:
 
     ###Scegli la funzione da usare
-    print("\nparlaConINAD consente le seguenti funzioni: \n1 - estrazione puntuale di un domicilio digitale; \n2 - verifica puntuale di un domicilio fiscale; \n3 - estrazione massiva di domicili digitali; \n4 - recupero dei risultati di una lista precedentemente caricata; \nU - esci da parlaConINAD.")
+    print("\nparlaConINAD consente le seguenti funzioni: \n\
+    1 - estrazione puntuale di un domicilio digitale; \n\
+    2 - verifica puntuale di un domicilio fiscale; \n\
+    3 - estrazione massiva di domicili digitali; \n\
+    4 - recupero dei risultati di una lista precedentemente caricata; \n\
+    U - esci da parlaConINAD.")
     scelta = ""
     while scelta not in ["1", "2", "3", "4", "U", "u"]:
         scelta = input("Cosa vuoi fare? Scegli 1, 2, 3 o 4 (U per uscire): ")
@@ -551,9 +572,11 @@ while continuare is True:
         estrazione = estrai(token, cf, ref)
         if estrazione.status_code == 200:
             try:
-                print("Ecco il domicilio digitale di "+cf+": "+estrazione.json()["digitalAddress"][0]["digitalAddress"])
+                print("Ecco il domicilio digitale di "+cf+": \
+                    "+estrazione.json()["digitalAddress"][0]["digitalAddress"])
             except:
-                print("L\'interazione è andata a buon fine, ma probabilmente il servizio è chiuso.")
+                print("L\'interazione è andata a buon fine, \
+                    ma probabilmente il servizio è chiuso.")
             print("Di seguito la response completa:")
             try:
                 print(estrazione.content.decode())
@@ -571,7 +594,9 @@ while continuare is True:
             print("Di seguito il contenuto completo della risposta: ")
             print(estrazione.json())
         else:
-            print("Qualcosa è andato storto, lo status code della risposta è: "+str(estrazione.status_code)+". Consulta le specifiche per maggiori informazioni")
+            print("Qualcosa è andato storto, \
+                lo status code della risposta è: "+str(estrazione.status_code)+". \
+                Consulta le specifiche per maggiori informazioni")
             print("Di seguito il contenuto completo della risposta: ")
             try:
                 print(estrazione.content.decode())
@@ -590,11 +615,14 @@ while continuare is True:
         if verifica.status_code == 200:
             try:
                 if verifica.json()["outcome"] is True:
-                    print("La verifica del domicilio digitale "+ mail +" per "+cf+" ha dato esito POSITIVO.")
+                    print("La verifica del domicilio digitale "+ mail +" per "+cf+" \
+                        ha dato esito POSITIVO.")
                 elif verifica.json()["outcome"] is False:
-                    print("La verifica del domicilio digitale "+ mail +" per "+cf+" ha dato esito NEGATIVO.")
+                    print("La verifica del domicilio digitale "+ mail +" per "+cf+" \
+                        ha dato esito NEGATIVO.")
             except:
-                print("L\'interazione è andata a buon fine, ma probabilmente il servizio è chiuso.")
+                print("L\'interazione è andata a buon fine, \
+                    ma probabilmente il servizio è chiuso.")
             print("Di seguito la response completa:")
             try:
                 print(verifica.content.decode())
@@ -616,7 +644,9 @@ while continuare is True:
             print("Di seguito il contenuto completo della risposta: ")
             print(verifica.json())
         else:
-            print("Qualcosa è andato storto, lo status code della risposta è: "+str(verifica.status_code)+". Consulta le specifiche per maggiori informazioni")
+            print("Qualcosa è andato storto, \
+                lo status code della risposta è: "+str(verifica.status_code)+". \
+                Consulta le specifiche per maggiori informazioni")
             print("Di seguito il contenuto completo della risposta: ")
             try:
                 print(verifica.content.decode())
@@ -627,7 +657,8 @@ while continuare is True:
 #############################
     elif scelta == "3":
         print("\n"+scelta + " - Estrazione multipla\n")
-        print("Per questa operazione hai bisogno di un file CSV, delimitato da ;, con una colonna che contiene i codici fiscali per i quali estrarre il domicilio.")
+        print("Per questa operazione hai bisogno di un file CSV, delimitato da ;, \
+            con una colonna che contiene i codici fiscali per i quali estrarre il domicilio.")
         print("Copialo nella cartella del programma, per tua facilità.\n")
         ref = input("Per iniziare, indica una breve descrizione del motivo della ricerca su INAD: ")
         # Individuo il file CSV con i dati in input
@@ -639,7 +670,8 @@ while continuare is True:
                 print("File trovato.")
             else:
                 nomeFileDati = input(
-                    "File "+ nomeFileDati + " non trovato. Verifica e inserisci di nuovo il nome del file CSV: "
+                    "File "+ nomeFileDati + " non trovato. \
+                    Verifica e inserisci di nuovo il nome del file CSV: "
                     )
         print("File CSV trovato.\n")
         # Inizializzo la cartella di lotto e i file di output e log
@@ -702,7 +734,7 @@ while continuare is True:
         invio = caricaLista(token, listaCF, ref)
         L = len(listaCF)
         #pausa = 120 + 2 * L
-        pausa = 320  #usato in attesa di capire quale sia l'intervallo corretto 
+        pausa = 320  #usato in attesa di capire quale sia l'intervallo corretto
         if invio.status_code == 202:
             with open(ricevutaJson, "w") as file:
                 ricevuta = invio.json()
@@ -711,9 +743,11 @@ while continuare is True:
                 ricevuta["data_lotto"] = data_lotto
                 ricevuta["chiaveCF"] = chiaveCF
                 file.write(json.dumps(ricevuta,sort_keys=False, indent=4))
-            stampa("Lista dei file inviata correttamente. Attendo " + str(pausa) + " secondi per verificare lo stato della richiesta.")
+            stampa("Lista dei file inviata correttamente. Attendo " + str(pausa) + " \
+                secondi per verificare lo stato della richiesta.")
             stampa("Ho salvato la ricevuta della richiesta nella cartella di lotto.")
-            stampa("Puoi interrompere l'esecuzione del programma (CTRL+C) e recuperare i risultati in seguito.")
+            stampa("Puoi interrompere l'esecuzione del programma (CTRL+C) e \
+                recuperare i risultati in seguito.")
         else:
             stampa("Qualcosa è andato storto. Puoi controllare i log nella cartella di lotto.")
             stampa("Di seguito la risposta completa.")
@@ -735,15 +769,19 @@ while continuare is True:
                 try:
                     with open(statoJson, "w") as file:
                         file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
-                    stampa("La richiesta è ancora in elaborazione. Attendo "+str(pausa)+" secondi per verificare nuovamente. ")
-                    stampa("Puoi interrompere il programma con CTRL+C e verificare in seguito lo stato di elaborazione con recuperaLista.py.")
+                    stampa("La richiesta è ancora in elaborazione. Attendo "+str(pausa)+" \
+                        secondi per verificare nuovamente. ")
+                    stampa("Puoi interrompere il programma con CTRL+C e verificare \
+                        in seguito lo stato di elaborazione con recuperaLista.py.")
                     time.sleep(pausa)
                 except:
                     stampa("Probabilmente il server di INAD sta riposando.")
-                    stampa("Interrompo l'esecuzione del programma. Puoi recuperare i risultati dell'estrazione in seguito con lo script recuperaLista.py.")
+                    stampa("Interrompo l'esecuzione del programma. Puoi recuperare \
+                        i risultati dell'estrazione in seguito.")
                     termina()
             else:
-                stampa("Qualcosa non funziona. Magari è scaduto il token. Termino il programma. Esegui la verifica più tardi con recuperaLista.py.")
+                stampa("Qualcosa non funziona. Magari è scaduto il token. \
+                    Termino il programma. Esegui la verifica più tardi.")
                 with open(statoJson, "w") as file:
                     file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
                 termina()
@@ -758,12 +796,15 @@ while continuare is True:
                     listaDomicili = domicili.json()["list"]
             except:
                 stampa("Probabilmente il server di INAD sta riposando.")
-                stampa("Interrompo l'esecuzione del programma. Puoi recuperare i risultati dell'estrazione in seguito con lo script recuperaLista.py.")
+                stampa("Interrompo l'esecuzione del programma. Puoi recuperare i risultati \
+                    dell'estrazione in seguito con lo script recuperaLista.py.")
                 termina()
         else:
-            stampa("Qualcosa è andato storto. Ti invito a guardare i file di log e riprovare più tardi con recuperaLista.py.")
+            stampa("Qualcosa è andato storto. Ti invito a guardare i file di log \
+                e riprovare più tardi.")
             termina()
-        ## Creo un nuovo array di dizionari a partire dall'array lotto e nuovo csv con colonne aggiuntive per il codice fiscale e la professione eventuale.
+        ## Creo un nuovo array di dizionari a partire dall'array lotto
+        ## e nuovo csv con colonne aggiuntive per il codice fiscale e la professione eventuale.
         lottoElaborato = []
         for soggetto in lotto:
             dizio = {}
@@ -792,8 +833,10 @@ while continuare is True:
             outputfile.write(";".join(fieldnames))
             outputfile.write("\n")
             writer.writerows(lottoElaborato)
-        stampa("Io avrei finito. Il file "+outputCSV+ " è il file CSV che hai caricato con una colonna aggiuntiva per i domicili digitali trovati.")
-        stampa("Se qualche soggetto ha più di un domicilio registrato e/o ha indicato una professione, nel CSV creato trovi ulteriori colonne.")
+        stampa("Io avrei finito. Il file "+outputCSV+ " è il file CSV \
+            che hai caricato con una colonna aggiuntiva per i domicili digitali trovati.")
+        stampa("Se qualche soggetto ha più di un domicilio registrato \
+            e/o ha indicato una professione, nel CSV creato trovi ulteriori colonne.")
 
 #############################
 ######  RECUPERO LISTA ######
@@ -801,7 +844,8 @@ while continuare is True:
     elif scelta == "4":
         print(scelta + " - Recupero risultati di precedente interrogazione multipla.")
         print("Hai bisogno di una ricevuta in formato json di un precedente invio.")
-        print("Ti conviene copiarla dalla cartella di lotto alla cartella di questo programma e rinominarla.")
+        print("Ti conviene copiarla dalla cartella di lotto \
+            alla cartella di questo programma e rinominarla.")
         nomeFileRicevuta = input("Inserisci il nome del file con la ricevuta: ")
         ricevutaTrovata = False
         while ricevutaTrovata is False:
@@ -816,7 +860,8 @@ while continuare is True:
                     ricevutaTrovata = True
             except:
                 nomeFileRicevuta = input(
-                    "File "+ nomeFileRicevuta + " non trovato. Verifica e inserisci di nuovo il nome del file CSV: "
+                    "File "+ nomeFileRicevuta + " non trovato. \
+                    Verifica e inserisci di nuovo il nome del file CSV: "
                     )
         print("File della ricevuta trovato.")
         ## Inizializzazione di cartella di lotto, file di output e logging
@@ -871,17 +916,21 @@ while continuare is True:
                 try:
                     with open(statoJson, "w") as file:
                         file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
-                    stampa("La richiesta è ancora in elaborazione. Attendo "+str(pausa)+" secondi per verificare nuovamente.")
-                    stampa("Puoi interrompere il programma con CRTL+C e recuperare i risultati in un secondo momento.")
+                    stampa("La richiesta è ancora in elaborazione. Attendo "+str(pausa)+" \
+                        secondi per verificare nuovamente.")
+                    stampa("Puoi interrompere il programma con CRTL+C e recuperare \
+                        i risultati in un secondo momento.")
                     time.sleep(pausa)
                 except:
                     stampa("Probabilmente il server di INAD sta riposando.")
                     stampa("Di seguito la risposta completa.")
                     stampa(str(verifica.content.decode()))
-                    stampa("Interrompo l'esecuzione del programma. Puoi recuperare i risultati dell'estrazione in seguito.")
+                    stampa("Interrompo l'esecuzione del programma. Puoi recuperare \
+                        i risultati dell'estrazione in seguito.")
                     termina()
             else:
-                stampa("Qualcosa non funziona. Magari è scaduto il token. Termino il programma. Puoi recuprare i risultati dell'estrazione in seguito.")
+                stampa("Qualcosa non funziona. Magari è scaduto il token. \
+                    Termino il programma. Puoi recuprare i risultati dell'estrazione in seguito.")
                 with open(statoJson, "w") as file:
                     file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
                 termina()
@@ -898,15 +947,18 @@ while continuare is True:
                 stampa("Probabilmente il server di INAD sta riposando.")
                 stampa("Di seguito la risposta completa.")
                 stampa(str(domicili.content.decode()))
-                stampa("Interrompo l'esecuzione del programma. Puoi recuperare i risultati dell'estrazione in seguito.")
+                stampa("Interrompo l'esecuzione del programma. Puoi recuperare \
+                    i risultati dell'estrazione in seguito.")
                 termina()
         else:
             stampa("Qualcosa è andato storto. Puoi recuperare i risultati più tardi.")
             stampa("Di seguito la risposta completa.")
             stampa(str(domicili.content.decode()))
-            stampa("Interrompo l'esecuzione del programma. Puoi recuperare i risultati dell'estrazione in seguito.")
+            stampa("Interrompo l'esecuzione del programma. Puoi recuperare \
+                i risultati dell'estrazione in seguito.")
             termina()
-        ## Creo un nuovo array di dizionari a partire dall'array lotto e nuovo csv con colonne aggiuntive per il codice fiscale e la professione eventuale.
+        ## Creo un nuovo array di dizionari a partire dall'array lotto
+        ## e nuovo csv con colonne aggiuntive per il codice fiscale e la professione eventuale.
         lottoElaborato = []
         for soggetto in lotto:
             dizio = {}
@@ -931,12 +983,16 @@ while continuare is True:
             N = max(N,l)
         fieldnames = list(lottoElaborato[posiz].keys())
         with open(outputCSV, "w") as outputfile:
-            writer = csv.DictWriter(outputfile, fieldnames=fieldnames, delimiter = ";", lineterminator="\n")
+            writer = csv.DictWriter(outputfile, fieldnames=fieldnames, delimiter = ";",
+                                    lineterminator="\n"
+                                    )
             outputfile.write(";".join(fieldnames))
             outputfile.write("\n")
             writer.writerows(lottoElaborato)
-        stampa("Io avrei finito. Il file "+outputCSV+ " è il file CSV che hai caricato con una colonna aggiuntiva per i domicili digitali trovati.")
-        stampa("Se qualche soggetto ha più di un domicilio registrato e/o ha indicato una professione, nel CSV creato trovi ulteriori colonne.")
+        stampa("Io avrei finito. Il file "+outputCSV+ " è il file CSV che hai caricato \
+            con una colonna aggiuntiva per i domicili digitali trovati.")
+        stampa("Se qualche soggetto ha più di un domicilio registrato \
+            e/o ha indicato una professione, nel CSV creato trovi ulteriori colonne.")
 
 #############################
 ####  USCITA DAL PROGRAMMA ##
@@ -948,7 +1004,8 @@ while continuare is True:
 # Chiedo se si ha intenzione di continuare
     risposta = input("Vuoi fare altre operazioni su INAD [S = sì / N = no]? ")
     while risposta not in ["S", "sì", "s", "Sì", "N", "no", "NO", "n"]:
-        risposta = input("Non ho capito. Vuoi fare altre operazioni su INAD [S = sì / N = no]? ")
+        risposta = input("Non ho capito. Vuoi fare altre operazioni su INAD \
+            [S = sì / N = no]? ")
     if risposta in ["N", "no", "NO", "n"]:
         continuare = False
 # Quando è tutto finito, termina
