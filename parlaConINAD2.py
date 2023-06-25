@@ -807,6 +807,8 @@ while CONTINUARE is True:
                                 dizio.update({"professione"+suffisso : address["practicedProfession"]})
                     break
             lottoElaborato.append(dizio)
+        with open(LOTTO_ELABORATO_JSON, "w+") as file:
+            file.write(json.dumps(lottoElaborato, sort_keys=False, indent=4))
         N = 0
         for i in lottoElaborato:
             l=len(i)
@@ -961,7 +963,8 @@ while CONTINUARE is True:
                                 dizio.update({"professione"+suffisso : address["practicedProfession"]})
                     break
             lottoElaborato.append(dizio)
-        N = 0
+        with open(LOTTO_ELABORATO_JSON, "w+") as file:
+            file.write(json.dumps(lottoElaborato, sort_keys=False, indent=4))N = 0
         for i in lottoElaborato:
             l=len(i)
             if l > N:
