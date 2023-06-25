@@ -32,7 +32,7 @@ Al primo avvio lo script richiede alcune informazioni:
 - i dati del client e-service INAD. Questi sono recuperabili dal back office PDND: conviene tenere la pagina del client e-services sulla PDND apera e fare copia e incolla;
 - la chiave privata associata alla chiave pubblica inserita nel client e-service: occorre salvare il file della chiave privata temporaneamente nella cartella di parlaConINAD2 e, una volta configurata, spostarlo.
 
-La password deve soddisfare i seguenti requisiti:
+La password deve soddisfare i seguenti requisiti (modificabile tramite l'espressione regolare RE_PASSWORD):
 - ha lunghezza da 8 a 20 caratteri;
 - contiene una lettera maiuscola;
 - contiene una lettera minuscola;
@@ -69,7 +69,7 @@ Per visualizzarle in modo più comprensibile si può caricare il fiel YAML su ht
 La descrizione testuale è qui: https://domiciliodigitale.gov.it/dgit/home/public/docs/inad-specifiche_tecniche_api_estrazione.pdf
 --> Attenzione: a metà giugno 2023, non c'è alineamento pieno fra sepcifiche API e loro descrizione testuale.
 
-Soprattutto, per implementare **fuzioni sensate** e un **uso di INAD legittimo e utile** a chi lavora con i domicili digitali è fondamentale conoscere la **normativa**:  
+Soprattutto, per implementare **fuzioni sensate** e un **uso di INAD legittimo e utile** per chi lavora con i domicili digitali è fondamentale conoscere la **normativa**:  
 - Codice dell'amministrazione digitale https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2005-03-07;82!vig=2023-06-17, in particolare:
 	- gli articoli 6-ter e 3-bis;
 	- le modifiche apportate al CAD dall'articolo 24 del dl 76/2020 (https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legge:2020-07-16;76!vig=2022-09-18)
@@ -81,7 +81,9 @@ Gli script fanno uso di alcuni moduli, fra cui:
 - jose;
 - requests;
 - cryptography;
-- urllib3,
+- urllib3;
+- pyinputplus;
+- pwinput,
 che potrebbero non essere parte dell'installazione standard di Python. 
 Verificare di averli installati.  
 
