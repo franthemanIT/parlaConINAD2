@@ -451,7 +451,7 @@ elif os.path.exists("chiave.priv") is False:
         passw2 = pwinput.pwinput(prompt= "Ripeti la password: ")
     password = passw.encode()
     chiave = base64.urlsafe_b64encode(kdf().derive(password))
-    password=b""
+    password = b""
     print("Le password coincidono.")
     print("Copia il file con la chiave privata associata "\
           "al client e-service INAD nella cartella del programma.")
