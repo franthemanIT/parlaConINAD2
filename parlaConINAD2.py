@@ -18,16 +18,15 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import requests
-#from http.client import HTTPConnection  # py3 #per log di requests
 import pwinput
 import pyinputplus as pyip
 
 # URL delle API da chiamare
-baseURL_auth = "https://auth.uat.interop.pagopa.it/token.oauth2" #Ambiente PDND di collaudo
-baseURL_INAD = "https://domiciliodigitaleapi.oscl.infocamere.it/rest/inad/v1/domiciliodigitale"
+BASE_URL_AUTH = "https://auth.uat.interop.pagopa.it/token.oauth2" #Ambiente PDND di collaudo
+BASE_URL_INAD = "https://domiciliodigitaleapi.oscl.infocamere.it/rest/inad/v1/domiciliodigitale"
 
 #nome del file di log generale
-logFileName="INAD.log"
+LOG_FILE_NAME="INAD.log"
 
 #Regole per il logging delle chiamate requests (si loggano solo le chiamate per estrazioni massive)
 #logging.basicConfig(level=logging.DEBUG)
@@ -35,12 +34,12 @@ log = logging.getLogger("urllib3")
 log.setLevel(logging.DEBUG)
 
 ## Funzioni che servono per l'interazione con l'utente
-def getIPAddress():
+def get_ip_address():
     '''Recupera e restituisce l'indirizzo IP dell'utente'''
     return socket.gethostbyname(socket.gethostname())
 
-callingIP = getIPAddress()
-callingUser = os.getlogin()
+CALLING_IP = get_ip_address()
+CALLING_USER = os.getlogin()
 
 def timestamp():
     '''Restituisce il timestamp attuale in formato %Y%m%d-%H%M%S-%f'''
@@ -48,49 +47,46 @@ def timestamp():
 
 def attendi():
     '''Richiede un'interazione dell'utente per proseguire'''
-    q = input("Premi INVIO/ENTER per proseguire.")
+    input("Premi INVIO/ENTER per proseguire.")
 
 def termina():
     '''Richiede un'interazione dell'utente per terminare il programma
     Utile anche a fine srpt per evitare di perdere quanto scritto a video'''
-    q = input("Premi INVIO/ENTER per terminare.")
+    input("Premi INVIO/ENTER per terminare.")
     sys.exit()
 
-reCF = "^([0-9]{11})|([A-Za-z]{6}[0-9]{2}[A-Za-z]{1}[0-9]{2}[A-Za-z]{1}[0-9]{3}[A-Za-z]{1})$"
-reMail = "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+RE_CF = "^([0-9]{11})|([A-Za-z]{6}[0-9]{2}[A-Za-z]{1}[0-9]{2}[A-Za-z]{1}[0-9]{3}[A-Za-z]{1})$"
+RE_MAIL = "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
 
-def chiediCF():
+def chiedi_cf():
     '''Chiede di inserire un codice fiscale / partita IVA e valida il formato.'''
-    ottieniCF = False
-    while ottieniCF is False:
+    ottieni_cf = False
+    while ottieni_cf is False:
         x = input("Inserisci il codice fiscale per cui verificare il domicilio digitale: ")
-        if re.match(reCF, x):
-            ottieniCF = True
+        if re.match(RE_CF, x):
+            ottieni_cf = True
         else:
             print("Codice fiscale non valido.")
     return x
 
-def chiediMail():
+def chiedi_mail():
     '''Chiede di inserire un indirizzo e-mail e valida il formato.'''
-    ottieniMail = False
-    while ottieniMail is False:
+    ottieni_mail = False
+    while ottieni_mail is False:
         x = input("Inserisci l\'indirizzo PEC da verificare: ")
-        if re.match(reMail, x):
-            ottieniMail = True
+        if re.match(RE_MAIL, x):
+            ottieni_mail = True
         else:
             print("Formato indirizzo PEC non valido.")
     return x
 
-def chiediData():
+def chiedi_data():
     '''Chiede di inserire una data G/M/A o G-M-A
     e la restituisce AAAA-MM-GG'''
     x = pyip.inputDate(prompt = "Inserisci la data alla quale verificare: ",
         formats=["%d/%m/%y", "%d/%m/%Y", "%d-%m-%y", "%d-%m-%Y"])
     y = x.strftime("%Y-%m-%d")
     return y
-
-# elenco di parole da interpretare come risposta affermativa in caso di domanda
-listaOK = ["sì", "SI", "S", "s", "Sì", "OK", "si"]
 
 ## Funzioni che servono per la manipolazione di file di input e output
 def crea_cartella(suffisso, dataeora=timestamp()):
@@ -104,81 +100,81 @@ def crea_cartella(suffisso, dataeora=timestamp()):
     return path
 
 ## Funzioni che servono per il logging
-def logRequest(logFile, requestTime, verbo, metodo, info):
-    '''Aggiunge una riga al file logFile, con gli argomenti divisi da un ;
+def log_request(log_file, request_time, verbo, metodo, info):
+    '''Aggiunge una riga al file log_file, con gli argomenti divisi da un ;
     Si usa per annotare nel log le request di requests'''
-    rigaDiLog=[requestTime, callingIP, callingUser, verbo, metodo, info]
-    logFile.write(";".join(rigaDiLog))
-    logFile.write("\n")
-    logFile.flush()
+    riga_di_log=[request_time, CALLING_IP, CALLING_USER, verbo, metodo, info]
+    log_file.write(";".join(riga_di_log))
+    log_file.write("\n")
+    log_file.flush()
 
-def logResponse(logFile, responseTime, requestTime, status_code, info):
-    '''Aggiunge una riga al file logFile, con gli argomenti divisi da un ;
+def log_response(log_file, response_time, request_time, status_code, info):
+    '''Aggiunge una riga al file log_file, con gli argomenti divisi da un ;
     Si usa per annotare nel log le request di requests'''
-    rigaDiLog=[responseTime, callingIP, requestTime, str(status_code), info]
-    logFile.write(";".join(rigaDiLog))
-    logFile.write("\n")
-    logFile.flush()
+    riga_di_log=[response_time, CALLING_IP, request_time, str(status_code), info]
+    log_file.write(";".join(riga_di_log))
+    log_file.write("\n")
+    log_file.flush()
 
 def clear():
     '''Cancella la schermo'''
     os.system("cls" if os.name == "nt" else "clear")
 
 ## Funzioni crittografiche
-def cifraStringa(stringa, chiave):
+def cifra_stringa(stringa, chiave):
     '''Cifra una stringa con la chiave indicata'''
     fernet = Fernet(chiave)
     fernet.encrypt(stringa.encode())
 
-def decifraStringa(stringa, chiave):
+def decifra_stringa(stringa, chiave):
     '''Decifra una stringa cifrata tramite la chiave indicata'''
     fernet = Fernet(chiave)
     fernet.decrypt(stringa).decode()
 
-def cifraDizionario(diz, chiave, outputFile):
-    '''Salva un dizionario diz nel file outputFile cifrato con la chiave "chiave" '''
+def cifra_dizionario(diz, chiave, output_file):
+    '''Salva un dizionario diz nel file output_file cifrato con la chiave "chiave" '''
     fernet = Fernet(chiave)
     a = json.dumps(diz, indent=4).encode()
     b =fernet.encrypt(a)
-    with open(outputFile, "wb") as f:
+    with open(output_file, "wb") as f:
         f.write(b)
 
-def decifraDizionario(inputFile, chiave):
+def decifra_dizionario(input_file, chiave):
     '''Decifra un dizionario memorizzato in un file JSON'''
     fernet = Fernet(chiave)
-    with open(inputFile, "rb") as f:
+    with open(input_file, "rb") as f:
         a = f.read()
         b = fernet.decrypt(a)
         c = b.decode()
         d = json.loads(c)
     return d
 
-def cifraFile(fileDaCifrare, chiave, outputFile = ""):
+def cifra_file(file_da_cifrare, chiave, output_file = ""):
     '''Cifra un file in un altro file'''
-    if outputFile == "":
-        outputFile = fileDaCifrare
-    with open(fileDaCifrare, "rb") as f:
+    if output_file == "":
+        output_file = file_da_cifrare
+    with open(file_da_cifrare, "rb") as f:
         originale = f.read()
     fernet = Fernet(chiave)
     cifrato = fernet.encrypt(originale)
-    with open(outputFile, "wb") as f:
+    with open(output_file, "wb") as f:
         f.write(cifrato)
 
-def decifraFile(fileDaDecifrare, chiave, outputFile = ""):
+def decifra_file(file_da_decifrare, chiave, output_file = ""):
     '''Decifra un file in un altro file'''
-    if outputFile == "":
-        outputFile = fileDaDecifrare
-    with open(fileDaDecifrare, "rb") as f:
+    if output_file == "":
+        output_file = file_da_decifrare
+    with open(file_da_decifrare, "rb") as f:
         cifrato = f.read()
     fernet = Fernet(chiave)
     originale = fernet.decrypt(cifrato)
-    with open(outputFile, "wb") as f:
+    with open(output_file, "wb") as f:
         f.write(originale)
 
-def recuperaChiave(fileCifrato, chiave):
+def recupera_chiave(file_cifrato, chiave):
     '''Recupera la chiave privata da un file cifrato con cifraChiave.
     In realtà decifra qualsiasi file cifrato e lo restituisce come risultato.'''
-    with open(fileCifrato, "rb") as f:
+    with open(file_cifrato, "rb") as f:
         fernet = Fernet(chiave)
         a = f.read()
         b = fernet.decrypt(a)
@@ -193,17 +189,17 @@ def kdf():
         iterations=480000,
         )
 
-def ottieniChiave(stringa):
+def ottieni_chiave(stringa):
     '''Ottiene la chiave crittografica a partire da una stringa'''
     x = base64.urlsafe_b64encode(kdf().derive(stringa))
     return x
 
-def impostaPassword():
+def imposta_password():
     '''Chiede all'utente di impostare una password sicura
     e restituisce la chiave crittografica derivata'''
-    rePassword = "^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!#$%&?].*)(?=.*[\W]).{8,20}$"
+    RE_PASSWORD = "^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!#$%&?].*)(?=.*[\W]).{8,20}$"
     passw = ""
-    while bool(re.match(rePassword, passw)) is False:
+    while bool(re.match(RE_PASSWORD, passw)) is False:
         print("Scegli una password. Fra 8 e 20 caratteri con una maiuscola, \
             una minuscola, un numero e un carattere speciale.")
         passw = pwinput.pwinput(prompt = "Scegli una password: ")
@@ -212,7 +208,7 @@ def impostaPassword():
             print("Le password non coincidono. Ripeti.")
             passw = pwinput.pwinput(prompt = "Scegli una password: ")
             passw2 = pwinput.pwinput(prompt= "Ripeti la password: ")
-        if bool(re.match(rePassword, passw)) is False:
+        if bool(re.match(RE_PASSWORD, passw)) is False:
             print("Password debole. Ripeti.")
     password = passw.encode()
     x = base64.urlsafe_b64encode(kdf().derive(password))
@@ -267,109 +263,109 @@ def token_request(client_id, client_assertion, client_assertion_type, grant_type
         "grant_type" : grant_type
     }
     headers = {"Content-Type" : "application/x-www-form-urlencoded"}
-    with open(logFileName, "a+") as logFile:
-        requestTime=timestamp()
-        logRequest(logFile, requestTime, "POST", "token_request", client_id)
-        r = requests.post(baseURL_auth, headers = headers, timeout=100, data=body)
-        responseTime=timestamp()
+    with open(LOG_FILE_NAME, "a+") as log_file:
+        request_time=timestamp()
+        log_request(log_file, request_time, "POST", "token_request", client_id)
+        r = requests.post(BASE_URL_AUTH, headers = headers, timeout=100, data=body)
+        response_time=timestamp()
         info = str(r.status_code)
-        logResponse(logFile, responseTime, requestTime, r.status_code, info)
+        log_response(log_file, response_time, request_time, r.status_code, info)
     return r
 
 ## Funzioni per l'interazione con INAD (autoesplicative)
-def estrai(token, cf, ref):
+def estrai_domicilio(token, cf, ref):
     '''Interroga INAD per estrarre un domicilio digitale a partire dal codice fiscale cf
     ref è il practicalReference cioè il riferimento al procedimento amministrativo
     per il quale si richiede l'estrazione'''
-    url = baseURL_INAD+"/extract/"+cf
+    url = BASE_URL_INAD+"/extract/"+cf
     headers = {"Authorization": "Bearer "+token}
     #parameters = {"codice_fiscale" : cf, "practicalReference" : ref}
     parametri = {"practicalReference" : ref}
-    with open(logFileName, "a+") as logFile:
-        requestTime=timestamp()
-        logRequest(
-            logFile, requestTime, "GET", "estrai", "richiesto domicilio digitale per "+cf[:2]+"***"
+    with open(LOG_FILE_NAME, "a+") as log_file:
+        request_time=timestamp()
+        log_request(
+            log_file, request_time, "GET", "estrai", "richiesto domicilio digitale per "+cf[:2]+"***"
             )
         r = requests.get(url, headers = headers, params = parametri, timeout=100)
-        responseTime=timestamp()
+        response_time=timestamp()
         info = str(r.status_code)
-        logResponse(logFile, responseTime, requestTime, r.status_code, info)
+        log_response(log_file, response_time, request_time, r.status_code, info)
     return r
 
-def verificaDomicilio(token, cf, ref, mail, data):
+def verifica_domicilio(token, cf, ref, mail, data):
     '''Verifica la validità di un domicilio digitale per un certo codice fiscale a una certa data
     ref è il practicalReference cioè il riferimento al procedimento amministrativo 
     per il quale si richiede l'estrazione'''
-    url = baseURL_INAD+"/verify/"+cf
+    url = BASE_URL_INAD+"/verify/"+cf
     headers = {"Authorization": "Bearer "+token}
     parametri = {"practicalReference" : ref, "digital_address" : mail, "since" : data}
     #parametri = {"practicalReference" : ref, "since" : data} #parametri incompleti per test
-    with open(logFileName, "a+") as logFile:
-        requestTime=timestamp()
-        logRequest(
-            logFile, requestTime, "GET", "verifica",
+    with open(LOG_FILE_NAME, "a+") as log_file:
+        request_time=timestamp()
+        log_request(
+            log_file, request_time, "GET", "verifica",
             "richiesta verifica del domicilio digitale "+mail[:3]+"***"
             )
         r = requests.get(url, headers = headers, params = parametri, timeout=100)
-        responseTime=timestamp()
+        response_time=timestamp()
         info = str(r.status_code)
-        logResponse(logFile, responseTime, requestTime, r.status_code, info)
+        log_response(log_file, response_time, request_time, r.status_code, info)
     return r
 
-def caricaLista(token, lista, ref):
+def carica_lista(token, lista, ref):
     '''Invia a INAD una lista di codici fiscali di cui ottenere il domicilio digitale'''
-    url = baseURL_INAD+"/listDigitalAddress"
+    url = BASE_URL_INAD+"/listDigitalAddress"
     headers = {"Authorization": "Bearer "+token}
     payload = {
                 "codiciFiscali" : lista,
                 "practicalReference" : ref
               }
-    with open(logFileName, "a+") as logFile:
-        requestTime=timestamp()
-        logRequest(
-            logFile, requestTime, "POST", "carica lista di CF",
+    with open(LOG_FILE_NAME, "a+") as log_file:
+        request_time=timestamp()
+        log_request(
+            log_file, request_time, "POST", "carica lista di CF",
             "richiesta verifica massiva per "+ref
             )
         r = requests.post(url, headers = headers, json = payload, timeout=100)
-        responseTime=timestamp()
+        response_time=timestamp()
         info = str(r.status_code)
-        logResponse(logFile, responseTime, requestTime, r.status_code, info)
+        log_response(log_file, response_time, request_time, r.status_code, info)
     return r
 
-def statoLista(token, idLista):
+def stato_lista(token, id_lista):
     '''Interroga INAD sullo stato di elaborazione di una lista precedentemente inviata''' 
-    url = baseURL_INAD+"/listDigitalAddress/state/"+idLista
+    url = BASE_URL_INAD+"/listDigitalAddress/state/"+id_lista
     headers = {"Authorization": "Bearer "+token}
-    with open(logFileName, "a+") as logFile:
-        requestTime=timestamp()
-        logRequest(
-            logFile, requestTime, "GET", "verifica stato lista",
-            "richiesta verifica stato per lista id "+idLista
+    with open(LOG_FILE_NAME, "a+") as log_file:
+        request_time=timestamp()
+        log_request(
+            log_file, request_time, "GET", "verifica stato lista",
+            "richiesta verifica stato per lista id "+id_lista
             )
         r = requests.get(url, headers = headers, timeout=100, allow_redirects = False)
-        responseTime=timestamp()
+        response_time=timestamp()
         info = str(r.status_code)
-        logResponse(logFile, responseTime, requestTime, r.status_code, info)
+        log_response(log_file, response_time, request_time, r.status_code, info)
     return r
 
-def prelevaLista(token, idLista):
+def preleva_lista(token, id_lista):
     '''Recupera da INAD una lista di codici fiscali 
     per i quali sono stati elaborati i domicili digitali'''
-    url = baseURL_INAD+"/listDigitalAddress/response/"+idLista
+    url = BASE_URL_INAD+"/listDigitalAddress/response/"+id_lista
     headers = {"Authorization": "Bearer "+token}
-    with open(logFileName, "a+") as logFile:
-        requestTime=timestamp()
-        logRequest(
-            logFile, requestTime, "GET", "verifica stato lista",
-            "richiesta verifica stato per lista id "+idLista
+    with open(LOG_FILE_NAME, "a+") as log_file:
+        request_time=timestamp()
+        log_request(
+            log_file, request_time, "GET", "verifica stato lista",
+            "richiesta verifica stato per lista id "+id_lista
             )
         r = requests.get(url, headers = headers, timeout=100)
-        responseTime=timestamp()
+        response_time=timestamp()
         info = str(r.status_code)
-        logResponse(logFile, responseTime, requestTime, r.status_code, info)
+        log_response(log_file, response_time, request_time, r.status_code, info)
     return r
 
-durataToken = 86400
+DURATA_TOEKN = 86400
 
 #####################################
 ###INIZIO DELLO SCRIPT INTERATTIVO###
@@ -378,7 +374,7 @@ durataToken = 86400
 #####################################
 ### INSTALLAZIONE AL PRIMO AVVIO ####
 #####################################
-print("Benvenuto "+callingUser+".")
+print("Benvenuto "+CALLING_USER+".")
 if os.path.exists("INAD.cfg") is False:
     print("Il programma non è configurato.")
     print("Copia il file della chiave privata associata alla chiave pubblica \
@@ -396,7 +392,7 @@ if os.path.exists("INAD.cfg") is False:
 #    password = passw.encode()
 #    chiave = base64.urlsafe_b64encode(kdf().derive(password))
 #    password = b""
-    chiave = impostaPassword()
+    chiave = imposta_password()
     print("Password impostata. \nAnnotala in un luogo segreto e sicuro: \
         NON potrai recuperarla in alcun modo.")
     print("Configuriamo i dati del client e-service di INAD. Li trovi nel back-office della PDND.")
@@ -423,21 +419,21 @@ if os.path.exists("INAD.cfg") is False:
     for i in lista:
         value = input(i+": ")
         INAD[i] = value
-    cifraDizionario(INAD, chiave, "INAD.cfg")
+    cifra_dizionario(INAD, chiave, "INAD.cfg")
     print("Dati del client e-service configurati.")
     print("Configuriamo la chiave privata.")
-    nomeFileChiave = input("Nome del file della chiave privata (es.: key.priv): ")
-    chiaveTrovata = False
-    while chiaveTrovata is False:
-        if os.path.exists(nomeFileChiave):
-            chiaveTrovata = True
+    nome_file_chiave = input("Nome del file della chiave privata (es.: key.priv): ")
+    CHIAVE_TROVATA = False
+    while CHIAVE_TROVATA is False:
+        if os.path.exists(nome_file_chiave):
+            CHIAVE_TROVATA = True
             print("File trovato.")
-            cifraFile(nomeFileChiave, chiave, "chiave.priv")
+            cifra_file(nome_file_chiave, chiave, "chiave.priv")
             print("Ho configurato la chiave in un file cifrato. \
-                Cancella il file " + nomeFileChiave + " dalla cartella del programma.")
+                Cancella il file " + nome_file_chiave + " dalla cartella del programma.")
         else:
-            nomeFileChiave = input(
-                "File "+ nomeFileChiave + "non trovato. Verifica e \
+            nome_file_chiave = input(
+                "File "+ nome_file_chiave + "non trovato. Verifica e \
                 inserisci di nuovo il nome del file della chiave privata: "
                 )
     print("La configurazione è terminata. \n\
@@ -460,18 +456,18 @@ elif os.path.exists("chiave.priv") is False:
     print("Le password coincidono.")
     print("Copia il file con la chiave privata associata \
         al client e-service INAD nella cartella del programma.")
-    nomeFileChiave = input("Nome del file della chiave privata (es.: key.priv): ")
-    chiaveTrovata = False
-    while chiaveTrovata is False:
-        if os.path.exists(nomeFileChiave):
-            chiaveTrovata = True
+    nome_file_chiave = input("Nome del file della chiave privata (es.: key.priv): ")
+    CHIAVE_TROVATA = False
+    while CHIAVE_TROVATA is False:
+        if os.path.exists(nome_file_chiave):
+            CHIAVE_TROVATA = True
             print("File trovato.")
-            cifraFile(nomeFileChiave, chiave, "chiave.priv")
+            cifra_file(nome_file_chiave, chiave, "chiave.priv")
             print("Ho configurato la chiave in un file cifrato. \
-                Cancella il file " + nomeFileChiave + " dalla cartella del programma.")
+                Cancella il file " + nome_file_chiave + " dalla cartella del programma.")
         else:
-            nomeFileChiave = input(
-                "File "+ nomeFileChiave + "non trovato. \
+            nome_file_chiave = input(
+                "File "+ nome_file_chiave + "non trovato. \
                 Verifica e inserisci di nuovo il nome del file della chiave privata: "
                 )
     print("La configurazione è terminata. \n\
@@ -493,13 +489,13 @@ else:
     password = passw.encode()
     chiave = base64.urlsafe_b64encode(kdf().derive(password))
     password = b""
-    passwordCorretta = False
-    while passwordCorretta is False:
+    PASSWORD_CORRETTA = False
+    while PASSWORD_CORRETTA is False:
         with open("INAD.cfg", "r") as f:
             try:
-                INAD = decifraDizionario("INAD.cfg", chiave)
+                INAD = decifra_dizionario("INAD.cfg", chiave)
                 print("La password è corretta.")
-                passwordCorretta = True
+                PASSWORD_CORRETTA = True
             except:
                 print("La password NON è corretta.")
                 passw = pwinput.pwinput()
@@ -507,8 +503,8 @@ else:
                 chiave = base64.urlsafe_b64encode(kdf().derive(password))
                 password = b""
 
-continuare = True
-while continuare is True:
+CONTINUARE = True
+while CONTINUARE is True:
 
     ###Scegli la funzione da usare
     print("\nparlaConINAD consente le seguenti funzioni: \n\
@@ -521,27 +517,27 @@ while continuare is True:
     while scelta not in ["1", "2", "3", "4", "U", "u"]:
         scelta = input("Cosa vuoi fare? Scegli 1, 2, 3 o 4 (U per uscire): ")
     if scelta in ["U", "u"]:
-        print("\nCiao " + callingUser + ", è stato un piacere fare affari con te ;)")
+        print("\nCiao " + CALLING_USER + ", è stato un piacere fare affari con te ;)")
         termina()
 
     ##verifico presenza di un token valido (file INAD.tkn)
-    tokenDisponibile = False
-    while tokenDisponibile is False:
+    TOKEN_DISPONIBILE = False
+    while TOKEN_DISPONIBILE is False:
         if os.path.exists("INAD.tkn") is True:
             try:
-                INADtoken = decifraDizionario("INAD.tkn", chiave)
+                INADtoken = decifra_dizionario("INAD.tkn", chiave)
                 allora = datetime.datetime.strptime(INADtoken["creato"], "%a, %d %b %Y %H:%M:%S %Z")
                 adesso = datetime.datetime.now()
-                if int((adesso - allora).total_seconds()) < (durataToken-60):
+                if int((adesso - allora).total_seconds()) < (DURATA_TOEKN-60):
                     token = INADtoken["token"]
                     print("Il token a disposizione è ancora valido.")
-                    tokenDisponibile = True
+                    TOKEN_DISPONIBILE = True
             #except (cryptography.fernet.InvalidToken, TypeError):
             except:
                 os.remove("INAD.tkn")
         else:
             print("Nessun token valido è disponibile. Ne ottengo uno.")
-            privateKey = recuperaChiave("chiave.priv", chiave)
+            privateKey = recupera_chiave("chiave.priv", chiave)
             client_assertion = create_m2m_client_assertion(INAD["kid"], INAD["alg"], INAD["typ"],
                 INAD["iss"], INAD["sub"], INAD["aud"], privateKey, INAD["PurposeID"])
             token_response = token_request(INAD["iss"], client_assertion,
@@ -550,10 +546,10 @@ while continuare is True:
             if token_response.status_code == 200:
                 tokenDict["token"] = token_response.json()["access_token"]
                 tokenDict["creato"] = token_response.headers["date"]
-                cifraDizionario(tokenDict, chiave, "INAD.tkn")
+                cifra_dizionario(tokenDict, chiave, "INAD.tkn")
                 print("Ho creato il token (o voucher). Proseguiamo...")
                 token = tokenDict["token"]
-                tokenDisponibile = True
+                TOKEN_DISPONIBILE = True
             else:
                 print("Non sono riuscito a creare il token. Di seguito la risposta completa.")
                 try:
@@ -567,9 +563,9 @@ while continuare is True:
 #############################
     if scelta == "1":
         print("\n"+scelta + " - Estrazione puntuale\n")
-        cf = chiediCF()
+        cf = chiedi_cf()
         ref = input("Inserisci un riferimento al procedimento amministrativo: ")
-        estrazione = estrai(token, cf, ref)
+        estrazione = estrai_domicilio(token, cf, ref)
         if estrazione.status_code == 200:
             try:
                 print("Ecco il domicilio digitale di "+cf+": \
@@ -607,11 +603,11 @@ while continuare is True:
 #############################
     elif scelta == "2":
         print("\n"+scelta + " - Verifica puntuale\n")
-        cf = chiediCF()
-        mail = chiediMail()
-        data = chiediData()
+        cf = chiedi_cf()
+        mail = chiedi_mail()
+        data = chiedi_data()
         ref = input("Inserisci un riferimento al procedimento amministrativo: ")
-        verifica = verificaDomicilio(token, cf, ref, mail, data)
+        verifica = verifica_domicilio(token, cf, ref, mail, data)
         if verifica.status_code == 200:
             try:
                 if verifica.json()["outcome"] is True:
@@ -662,58 +658,58 @@ while continuare is True:
         print("Copialo nella cartella del programma, per tua facilità.\n")
         ref = input("Per iniziare, indica una breve descrizione del motivo della ricerca su INAD: ")
         # Individuo il file CSV con i dati in input
-        nomeFileDati = input("Indica il nome del file CSV: ")
-        fileDatiTrovato = False
-        while fileDatiTrovato is False:
-            if os.path.exists(nomeFileDati):
-                fileDatiTrovato = True
+        nome_file_dati = input("Indica il nome del file CSV: ")
+        FILE_DATI_TROVATO = False
+        while FILE_DATI_TROVATO is False:
+            if os.path.exists(nome_file_dati):
+                FILE_DATI_TROVATO = True
                 print("File trovato.")
             else:
-                nomeFileDati = input(
-                    "File "+ nomeFileDati + " non trovato. \
+                nome_file_dati = input(
+                    "File "+ nome_file_dati + " non trovato. \
                     Verifica e inserisci di nuovo il nome del file CSV: "
                     )
         print("File CSV trovato.\n")
         # Inizializzo la cartella di lotto e i file di output e log
-        data_lotto = timestamp()
-        path=crea_cartella(ref, data_lotto) # crea la cartella di lavoro del lotto
-        lottoLog=path + data_lotto + "-" + "lotto.log"
-        ricevutaJson = path + data_lotto + "-ricevuta.json"
-        statoJson = path + data_lotto + "-stato.json"
-        domiciliJson = path + data_lotto + "-domiciliDigitali.json"
-        lottoJson=path + data_lotto + "-" + "Lotto.json"
-        lottoElaboratoJson = path + data_lotto + "-" + "LottoElaborato.json"
-        requestsLog = path + data_lotto + "-" + "Requests.log"
-        fh = logging.FileHandler(requestsLog)
+        DATA_LOTTO = timestamp()
+        PATH=crea_cartella(ref, DATA_LOTTO) # crea la cartella di lavoro del lotto
+        LOTTO_LOG=PATH + DATA_LOTTO + "-" + "lotto.log"
+        RICEVUTA_JSON = PATH + DATA_LOTTO + "-ricevuta.json"
+        STATO_JSON = PATH + DATA_LOTTO + "-stato.json"
+        DOMICILI_JSON = PATH + DATA_LOTTO + "-domiciliDigitali.json"
+        LOTTO_JSON=PATH + DATA_LOTTO + "-" + "Lotto.json"
+        LOTTO_ELABORATO_JSON = PATH + DATA_LOTTO + "-" + "LottoElaborato.json"
+        REQUESTS_LOG = PATH + DATA_LOTTO + "-" + "Requests.log"
+        fh = logging.FileHandler(REQUESTS_LOG)
         log.addHandler(fh)
-        outputCSV = path + "elaborato-"+nomeFileDati
+        OUTPUT_CSV = PATH + "elaborato-"+nome_file_dati
         # Definisco un paio di funzioni per creare il log di lotto con eventuali messaggio a video
         def logga(stringa):
             '''Scrive una stringa nel log di lotto'''
-            with open(lottoLog, "a+") as fileLog:
-                rigaDiLog=[timestamp(),stringa]
-                fileLog.write(";".join(rigaDiLog))
+            with open(LOTTO_LOG, "a+") as fileLog:
+                riga_di_log=[timestamp(),stringa]
+                fileLog.write(";".join(riga_di_log))
                 fileLog.write("\n")
                 fileLog.flush()
         def stampa(stringa):
             '''Scrive una stringa a schermo e nel log di lotto'''
             print(stringa)
-            with open(lottoLog, "a+") as fileLog:
-                rigaDiLog=[timestamp(),stringa]
-                fileLog.write(";".join(rigaDiLog))
+            with open(LOTTO_LOG, "a+") as fileLog:
+                riga_di_log=[timestamp(),stringa]
+                fileLog.write(";".join(riga_di_log))
                 fileLog.write("\n")
                 fileLog.flush()
         logga("Ciao " + os.getlogin() + "!") #apre il lotto di log salutando l'utente
-        stampa("Ho creato la cartella di lotto: "+path)
-        logga("Data della richiesta: "+data_lotto)
+        stampa("Ho creato la cartella di lotto: "+PATH)
+        logga("Data della richiesta: "+DATA_LOTTO)
         logga("Motivo della richiesta: "+ref)
         ## Estraggo il file CSV e creo un array di dizionari e un file json nella cartella di lotto
-        with open(nomeFileDati, "r") as inputFile:
-            reader = csv.DictReader(inputFile, delimiter=";")
+        with open(nome_file_dati, "r") as input_file:
+            reader = csv.DictReader(input_file, delimiter=";")
             lotto = []
             for i in reader:
                 lotto.append(i)
-        with open(lottoJson, "w+") as file:
+        with open(LOTTO_JSON, "w+") as file:
             file.write(json.dumps(lotto, sort_keys=False, indent=4))
         ## Definisco la colonna che contiene il codice fiscale
         print("\nIl CSV importato ha le seguenti chiavi:")
@@ -731,19 +727,19 @@ while continuare is True:
         stampa("Ho estratto la lista di codici fiscali per cui richiedere il domicilio digitale.")
         # Carico la lista su INAD e definisco intervallo di polling
         stampa("Carico la lista su INAD.")
-        invio = caricaLista(token, listaCF, ref)
+        invio = carica_lista(token, listaCF, ref)
         L = len(listaCF)
-        #pausa = 120 + 2 * L
-        pausa = 320  #usato in attesa di capire quale sia l'intervallo corretto
+        #PAUSA = 120 + 2 * L
+        PAUSA = 320  #usato in attesa di capire quale sia l'intervallo corretto
         if invio.status_code == 202:
-            with open(ricevutaJson, "w") as file:
+            with open(RICEVUTA_JSON, "w") as file:
                 ricevuta = invio.json()
-                ricevuta["nomeFileDati"] = nomeFileDati
-                ricevuta["cartellaDiLavoro"] = path
-                ricevuta["data_lotto"] = data_lotto
+                ricevuta["nomeFileDati"] = nome_file_dati
+                ricevuta["cartellaDiLavoro"] = PATH
+                ricevuta["data_lotto"] = DATA_LOTTO
                 ricevuta["chiaveCF"] = chiaveCF
                 file.write(json.dumps(ricevuta,sort_keys=False, indent=4))
-            stampa("Lista dei file inviata correttamente. Attendo " + str(pausa) + " \
+            stampa("Lista dei file inviata correttamente. Attendo " + str(PAUSA) + " \
                 secondi per verificare lo stato della richiesta.")
             stampa("Ho salvato la ricevuta della richiesta nella cartella di lotto.")
             stampa("Puoi interrompere l'esecuzione del programma (CTRL+C) e \
@@ -753,27 +749,27 @@ while continuare is True:
             stampa("Di seguito la risposta completa.")
             stampa(str(invio.content.decode()))
             termina()
-        # Attendo il tempo T = pausa
-        time.sleep(pausa)
+        # Attendo il tempo T = PAUSA
+        time.sleep(PAUSA)
         # Recupero lo stato dell'elaborazione della lista
-        idLista = ricevuta["id"]
-        listaPronta = False
-        while listaPronta is False:
-            verifica = statoLista(token, idLista)
+        id_lista = ricevuta["id"]
+        LISTA_PRONTA = False
+        while LISTA_PRONTA is False:
+            verifica = stato_lista(token, id_lista)
             if verifica.status_code == 303: ## poi sarà 303:
-                listaPronta = True
+                LISTA_PRONTA = True
                 stampa("La richiesta è stata elaborata da INAD. Procedo a prelevarla.")
-                with open(statoJson, "w") as file:
+                with open(STATO_JSON, "w") as file:
                     file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
             elif verifica.status_code == 200:
                 try:
-                    with open(statoJson, "w") as file:
+                    with open(STATO_JSON, "w") as file:
                         file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
-                    stampa("La richiesta è ancora in elaborazione. Attendo "+str(pausa)+" \
+                    stampa("La richiesta è ancora in elaborazione. Attendo "+str(PAUSA)+" \
                         secondi per verificare nuovamente. ")
                     stampa("Puoi interrompere il programma con CTRL+C e verificare \
                         in seguito lo stato di elaborazione con recuperaLista.py.")
-                    time.sleep(pausa)
+                    time.sleep(PAUSA)
                 except:
                     stampa("Probabilmente il server di INAD sta riposando.")
                     stampa("Interrompo l'esecuzione del programma. Puoi recuperare \
@@ -782,17 +778,17 @@ while continuare is True:
             else:
                 stampa("Qualcosa non funziona. Magari è scaduto il token. \
                     Termino il programma. Esegui la verifica più tardi.")
-                with open(statoJson, "w") as file:
+                with open(STATO_JSON, "w") as file:
                     file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
                 termina()
         # Quando la lista è pronta, recupero i domicili e li salvo in domiciliDigitali.json
-        domicili = prelevaLista(token, idLista)
+        domicili = preleva_lista(token, id_lista)
         if domicili.status_code == 200:
             try:
-                with open(domiciliJson, "w") as file:
+                with open(DOMICILI_JSON, "w") as file:
                     file.write(json.dumps(domicili.json(), sort_keys=False, indent = 4))
                     stampa("Ho recuperato la lista dei domicili digitali.")
-                    stampa("La trovi nel file " + domiciliJson + " nella cartella di lavoro.")
+                    stampa("La trovi nel file " + DOMICILI_JSON + " nella cartella di lavoro.")
                     listaDomicili = domicili.json()["list"]
             except:
                 stampa("Probabilmente il server di INAD sta riposando.")
@@ -828,12 +824,12 @@ while continuare is True:
                 posiz = lottoElaborato.index(i) # la posizione dell'elemento
             N = max(N,l)
         fieldnames = list(lottoElaborato[posiz].keys())
-        with open(outputCSV, "w") as outputfile:
+        with open(OUTPUT_CSV, "w") as outputfile:
             writer = csv.DictWriter(outputfile, fieldnames=fieldnames, delimiter = ";", lineterminator="\n")
             outputfile.write(";".join(fieldnames))
             outputfile.write("\n")
             writer.writerows(lottoElaborato)
-        stampa("Io avrei finito. Il file "+outputCSV+ " è il file CSV \
+        stampa("Io avrei finito. Il file "+OUTPUT_CSV+ " è il file CSV \
             che hai caricato con una colonna aggiuntiva per i domicili digitali trovati.")
         stampa("Se qualche soggetto ha più di un domicilio registrato \
             e/o ha indicato una professione, nel CSV creato trovi ulteriori colonne.")
@@ -846,81 +842,81 @@ while continuare is True:
         print("Hai bisogno di una ricevuta in formato json di un precedente invio.")
         print("Ti conviene copiarla dalla cartella di lotto \
             alla cartella di questo programma e rinominarla.")
-        nomeFileRicevuta = input("Inserisci il nome del file con la ricevuta: ")
-        ricevutaTrovata = False
-        while ricevutaTrovata is False:
+        nome_file_ricevuta = input("Inserisci il nome del file con la ricevuta: ")
+        RICEVUTA_TROVATA = False
+        while RICEVUTA_TROVATA is False:
             try:
-                with open(nomeFileRicevuta, "rb") as file:
-                    datiLotto = json.load(file)
-                    nomeFileDati = datiLotto["nomeFileDati"]
-                    path = datiLotto["cartellaDiLavoro"]
-                    idLista = datiLotto["id"]
-                    data_lotto = datiLotto["data_lotto"]
-                    chiaveCF = datiLotto["chiaveCF"]
-                    ricevutaTrovata = True
+                with open(nome_file_ricevuta, "rb") as file:
+                    DATI_LOTTO = json.load(file)
+                    nome_file_dati = DATI_LOTTO["nomeFileDati"]
+                    PATH = DATI_LOTTO["cartellaDiLavoro"]
+                    id_lista = DATI_LOTTO["id"]
+                    DATA_LOTTO = DATI_LOTTO["data_lotto"]
+                    chiaveCF = DATI_LOTTO["chiaveCF"]
+                    RICEVUTA_TROVATA = True
             except:
-                nomeFileRicevuta = input(
-                    "File "+ nomeFileRicevuta + " non trovato. \
+                nome_file_ricevuta = input(
+                    "File "+ nome_file_ricevuta + " non trovato. \
                     Verifica e inserisci di nuovo il nome del file CSV: "
                     )
         print("File della ricevuta trovato.")
         ## Inizializzazione di cartella di lotto, file di output e logging
-        lottoLog=path + data_lotto + "-" + "lotto.log"
-        ricevutaJson = path + data_lotto + "-ricevuta.json"
-        statoJson = path + data_lotto + "-stato.json"
-        domiciliJson = path + data_lotto + "-domiciliDigitali.json"
-        lottoJson=path + data_lotto + "-" + "Lotto.json"
-        lottoElaboratoJson = path + data_lotto + "-" + "LottoElaborato.json"
-        requestsLog = path + data_lotto + "-" + "Requests.log"
-        fh = logging.FileHandler(requestsLog)
+        LOTTO_LOG=PATH + DATA_LOTTO + "-" + "lotto.log"
+        RICEVUTA_JSON = PATH + DATA_LOTTO + "-ricevuta.json"
+        STATO_JSON = PATH + DATA_LOTTO + "-stato.json"
+        DOMICILI_JSON = PATH + DATA_LOTTO + "-domiciliDigitali.json"
+        LOTTO_JSON=PATH + DATA_LOTTO + "-" + "Lotto.json"
+        LOTTO_ELABORATO_JSON = PATH + DATA_LOTTO + "-" + "LottoElaborato.json"
+        REQUESTS_LOG = PATH + DATA_LOTTO + "-" + "Requests.log"
+        fh = logging.FileHandler(REQUESTS_LOG)
         log.addHandler(fh)
-        outputCSV = path + "elaborato-"+nomeFileDati
+        OUTPUT_CSV = PATH + "elaborato-"+nome_file_dati
         # Definisco un paio di funzioni per creare il log di lotto con eventuali messaggio a video
         def logga(stringa):
             '''Scrive una stringa nel log di lotto'''
-            with open(lottoLog, "a+") as fileLog:
-                rigaDiLog=[timestamp(),stringa]
-                fileLog.write(";".join(rigaDiLog))
+            with open(LOTTO_LOG, "a+") as fileLog:
+                riga_di_log=[timestamp(),stringa]
+                fileLog.write(";".join(riga_di_log))
                 fileLog.write("\n")
                 fileLog.flush()
         def stampa(stringa):
             '''Scrive una stringa a schermo e nel log di lotto'''
             print(stringa)
-            with open(lottoLog, "a+") as fileLog:
-                rigaDiLog=[timestamp(),stringa]
-                fileLog.write(";".join(rigaDiLog))
+            with open(LOTTO_LOG, "a+") as fileLog:
+                riga_di_log=[timestamp(),stringa]
+                fileLog.write(";".join(riga_di_log))
                 fileLog.write("\n")
                 fileLog.flush()
         # Leggo i dati di lotto dal file json
-        with open(lottoJson, "r") as file:
+        with open(LOTTO_JSON, "r") as file:
             lotto = json.load(file)
         listaCF = []
         for i in lotto:
             listaCF.append(i[chiaveCF])
         L = len(listaCF)
-        #pausa = 120 + 2 * L
-        pausa = 320  #in attesa di capire come definirla in funzione di L
-        stampa("Informazioni dal file "+nomeFileRicevuta +" importate.")
-        stampa("Inizio il recupero della richiesta con id: "+idLista +".")
+        #PAUSA = 120 + 2 * L
+        PAUSA = 320  #in attesa di capire come definirla in funzione di L
+        stampa("Informazioni dal file "+nome_file_ricevuta +" importate.")
+        stampa("Inizio il recupero della richiesta con id: "+id_lista +".")
         # Verifico lo stato di elaborazione della lista
         # Recupero lo stato dell'elaborazione della lista
-        listaPronta = False
-        while listaPronta is False:
-            verifica = statoLista(token, idLista)
+        LISTA_PRONTA = False
+        while LISTA_PRONTA is False:
+            verifica = stato_lista(token, id_lista)
             if verifica.status_code == 303:
-                listaPronta = True
+                LISTA_PRONTA = True
                 stampa("La richiesta è stata elaborata da INAD. Procedo a prelevarla.")
-                with open(statoJson, "w") as file:
+                with open(STATO_JSON, "w") as file:
                     file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
             elif verifica.status_code == 200:
                 try:
-                    with open(statoJson, "w") as file:
+                    with open(STATO_JSON, "w") as file:
                         file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
-                    stampa("La richiesta è ancora in elaborazione. Attendo "+str(pausa)+" \
+                    stampa("La richiesta è ancora in elaborazione. Attendo "+str(PAUSA)+" \
                         secondi per verificare nuovamente.")
                     stampa("Puoi interrompere il programma con CRTL+C e recuperare \
                         i risultati in un secondo momento.")
-                    time.sleep(pausa)
+                    time.sleep(PAUSA)
                 except:
                     stampa("Probabilmente il server di INAD sta riposando.")
                     stampa("Di seguito la risposta completa.")
@@ -931,17 +927,17 @@ while continuare is True:
             else:
                 stampa("Qualcosa non funziona. Magari è scaduto il token. \
                     Termino il programma. Puoi recuprare i risultati dell'estrazione in seguito.")
-                with open(statoJson, "w") as file:
+                with open(STATO_JSON, "w") as file:
                     file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
                 termina()
         # Quando la lista è pronta, recupero i domicili e li salvo in domiciliDigitali.json
-        domicili = prelevaLista(token, idLista)
+        domicili = preleva_lista(token, id_lista)
         if domicili.status_code == 200:
             try:
-                with open(domiciliJson, "w") as file:
+                with open(DOMICILI_JSON, "w") as file:
                     file.write(json.dumps(domicili.json(), sort_keys=False, indent = 4))
                     stampa("Ho recuperato la lista dei domicili digitali.")
-                    stampa("La trovi nel file " + domiciliJson + " nella cartella di lavoro.")
+                    stampa("La trovi nel file " + DOMICILI_JSON + " nella cartella di lavoro.")
                     listaDomicili = domicili.json()["list"]
             except:
                 stampa("Probabilmente il server di INAD sta riposando.")
@@ -982,14 +978,14 @@ while continuare is True:
                 posiz = lottoElaborato.index(i) # la posizione dell'elemento
             N = max(N,l)
         fieldnames = list(lottoElaborato[posiz].keys())
-        with open(outputCSV, "w") as outputfile:
+        with open(OUTPUT_CSV, "w") as outputfile:
             writer = csv.DictWriter(outputfile, fieldnames=fieldnames, delimiter = ";",
                                     lineterminator="\n"
                                     )
             outputfile.write(";".join(fieldnames))
             outputfile.write("\n")
             writer.writerows(lottoElaborato)
-        stampa("Io avrei finito. Il file "+outputCSV+ " è il file CSV che hai caricato \
+        stampa("Io avrei finito. Il file "+OUTPUT_CSV+ " è il file CSV che hai caricato \
             con una colonna aggiuntiva per i domicili digitali trovati.")
         stampa("Se qualche soggetto ha più di un domicilio registrato \
             e/o ha indicato una professione, nel CSV creato trovi ulteriori colonne.")
@@ -998,7 +994,7 @@ while continuare is True:
 ####  USCITA DAL PROGRAMMA ##
 #############################
     else:
-        print("Ciao " + callingUser + ", è stato un piacere fare affari con te ;)")
+        print("Ciao " + CALLING_USER + ", è stato un piacere fare affari con te ;)")
         termina()
 
 # Chiedo se si ha intenzione di continuare
@@ -1007,6 +1003,6 @@ while continuare is True:
         risposta = input("Non ho capito. Vuoi fare altre operazioni su INAD \
             [S = sì / N = no]? ")
     if risposta in ["N", "no", "NO", "n"]:
-        continuare = False
+        CONTINUARE = False
 # Quando è tutto finito, termina
 termina()
