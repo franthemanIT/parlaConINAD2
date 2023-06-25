@@ -99,7 +99,7 @@ E' sempre richiesto di specificare il motivo / il riferimento al procedimento am
 
 Per le funzioni 1 e 2 basta seguire le indicazioni a riga di comando.  
 
-**3 - Estrazione multipla **
+**3 - Estrazione multipla**
 
 Occorre un file CSV, con delimitatore ;, che contenga una colonna con i codici fiscali da estrarre.  
 Lo script restituisce una copia del file CSV alla quale sono aggiunta una o più colonne con i domicili digitali trovati su INAD.  
@@ -109,7 +109,7 @@ L'elaborazione della richiesta è asincrona da parte di INAD. Lo script resta in
 
 Si può comunque interrompere lo script (CTRL+C) e recuperare i risultati in seguito con la funzione n. 4.
 
-**4 - Recupero dei risultati **
+**4 - Recupero dei risultati**
 
 Lo script richiede di inserire il nome del file .json della ricevuta.  
 Conviene copiarlo dalla cartella di lotto nella cartella di parlaConINAD.
