@@ -1,3 +1,6 @@
+'''Script per l'interrogazione di INAD (Indice Nazionale dei Domicili Digitali) tramite API.
+Per l'autenticazione si fa riferimento alla PDND (Piattaforma Digitale Nazionale Dati), secondo il ModI.
+Autore: Francesco Del Castillo'''
 import datetime
 import sys
 import uuid
@@ -6,15 +9,17 @@ import base64
 import socket
 import json
 import csv
+import re
+import logging  #per log di requests
 from jose import jwt
 from jose.constants import Algorithms
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import requests
-import logging  #per log di requests
 #from http.client import HTTPConnection  # py3 #per log di requests
 import pwinput
+import pyinputplus as pyip
 
 # URL delle API da chiamare
 baseURL_auth = "https://auth.uat.interop.pagopa.it/token.oauth2" #Ambiente PDND di collaudo
@@ -50,6 +55,37 @@ def termina():
     q = input("Premi INVIO/ENTER per terminare.")
     sys.exit()
 
+reCF = "^([0-9]{11})|([A-Za-z]{6}[0-9]{2}[A-Za-z]{1}[0-9]{2}[A-Za-z]{1}[0-9]{3}[A-Za-z]{1})$"
+reMail = "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+
+def chiediCF():
+    '''Chiede di inserire un codice fiscale / partita IVA e valida il formato.'''
+    ottieniCF = False
+    while ottieniCF is False:
+        x = input("Inserisci il codice fiscale per cui verificare il domicilio digitale: ")
+        if re.match(reCF, x):
+            ottieniCF = True
+        else:
+            print("Codice fiscale non valido.")
+    return x
+        
+def chiediMail():
+    '''Chiede di inserire un indirizzo e-mail e valida il formato.'''
+    ottieniMail = False
+    while ottieniMail is False:
+        x = input("Inserisci l\'indirizzo PEC da verificare: ")
+        if re.match(reMail, x):
+            ottieniMail = True
+        else:
+            print("Formato indirizzo PEC non valido.")
+    return x
+
+def chiediData():
+    '''Chiede di inserire una data G/M/A o G-M-A e la restituisce AAAA-MM-GG'''
+    x = pyip.inputDate(prompt = "Inserisci la data alla quale verificare: ", formats=["%d/%m/%y", "%d/%m/%Y", "%d-%m-%y", "%d-%m-%Y"])
+    y = x.strftime("%Y-%m-%d")
+    return y
+    
 # elenco di parole da interpretare come risposta affermativa in caso di domanda
 listaOK = ["sì", "SI", "S", "s", "Sì", "OK", "si"]
 
@@ -84,7 +120,7 @@ def logResponse(logFile, responseTime, requestTime, status_code, info):
 def clear():
     '''Cancella la schermo'''
     os.system("cls" if os.name == "nt" else "clear")
-    
+
 ## Funzioni crittografiche
 def cifraStringa(stringa, chiave):
     '''Cifra una stringa con la chiave indicata'''
@@ -153,6 +189,32 @@ def kdf():
         salt=salt,
         iterations=480000,
         )
+
+def ottieniChiave(stringa):
+    '''Ottiene la chiave crittografica a partire da una stringa'''
+    x = base64.urlsafe_b64encode(kdf().derive(stringa))
+    return x
+
+def impostaPassword():
+    '''Chiede all'utente di impostare una password sicura
+    e restituisce la chiave crittografica derivata'''
+    rePassword = "^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!#$%&?].*)(?=.*[\W]).{8,20}$"
+    passw = ""
+    while bool(re.match(rePassword, passw)) is False:
+        print("Scegli una password. Fra 8 e 20 caratteri con una maiuscola, una minuscola, un numero e un carattere speciale.")
+        passw = pwinput.pwinput(prompt = "Scegli una password: ")
+        passw2 = pwinput.pwinput(prompt= "Ripeti la password: ")
+        while passw != passw2:
+            print("Le password non coincidono. Ripeti.")
+            passw = pwinput.pwinput(prompt = "Scegli una password: ")
+            passw2 = pwinput.pwinput(prompt= "Ripeti la password: ")
+        if bool(re.match(rePassword, passw)) is False:
+            print("Password debole. Ripeti.")
+    password = passw.encode()
+    x = base64.urlsafe_b64encode(kdf().derive(password))
+    passw = ""
+    password = b""
+    return x
 
 ## Funzioni che servono per interazione con PDND per staccare il token
 def get_private_key(key_path):
@@ -230,7 +292,7 @@ def estrai(token, cf, ref):
         logResponse(logFile, responseTime, requestTime, r.status_code, info)
     return r
 
-def verifica(token, cf, ref, mail, data):
+def verificaDomicilio(token, cf, ref, mail, data):
     '''Verifica la validità di un domicilio digitale per un certo codice fiscale a una certa data
     ref è il practicalReference cioè il riferimento al procedimento amministrativo 
     per il quale si richiede l'estrazione'''
@@ -241,7 +303,8 @@ def verifica(token, cf, ref, mail, data):
     with open(logFileName, "a+") as logFile:
         requestTime=timestamp()
         logRequest(
-            logFile, requestTime, "GET", "verifica", "richiesta verifica del domicilio digitale "+mail[:3]+"***"
+            logFile, requestTime, "GET", "verifica", 
+            "richiesta verifica del domicilio digitale "+mail[:3]+"***"
             )
         r = requests.get(url, headers = headers, params = parametri, timeout=100)
         responseTime=timestamp()
@@ -260,7 +323,8 @@ def caricaLista(token, lista, ref):
     with open(logFileName, "a+") as logFile:
         requestTime=timestamp()
         logRequest(
-            logFile, requestTime, "POST", "carica lista di CF", "richiesta verifica massiva per "+ref
+            logFile, requestTime, "POST", "carica lista di CF", 
+            "richiesta verifica massiva per "+ref
             )
         r = requests.post(url, headers = headers, json = payload, timeout=100)
         responseTime=timestamp()
@@ -285,7 +349,8 @@ def statoLista(token, idLista):
     return r
 
 def prelevaLista(token, idLista):
-    '''Recupera da INAD una lista di codici fiscali per i quali sono stati elaborati i domicili digitali'''
+    '''Recupera da INAD una lista di codici fiscali 
+    per i quali sono stati elaborati i domicili digitali'''
     url = baseURL_INAD+"/listDigitalAddress/response/"+idLista
     headers = {"Authorization": "Bearer "+token}
     with open(logFileName, "a+") as logFile:
@@ -309,29 +374,30 @@ durataToken = 86400
 #####################################
 ### INSTALLAZIONE AL PRIMO AVVIO ####
 #####################################
-print("Benvenuto.")
+print("Benvenuto "+callingUser+".")
 if os.path.exists("INAD.cfg") is False:
     print("Il programma non è configurato.")
-    print("Copia il file della chiave privata assocaito alla chiave pubblica del client e-service INAD nella cartella di questo programma.")
+    print("Copia il file della chiave privata associata alla chiave pubblica del client e-service INAD nella cartella di questo programma.")
     print("Ti chiederò di: ")
     print("- scegliere una password")
     print("- inserire i dati di configurazione del client e-service PDND di INAD;")
     print("- indicare il nome del file della chiave privata.")
-    passw = pwinput.pwinput()
-    passw2 = pwinput.pwinput(prompt= "Ripeti la password: ")
-    while passw != passw2:
-        print("Le password non coincidono. Ripeti.")
-        passw = pwinput.pwinput()
-        passw2 = pwinput.pwinput(prompt= "Ripeti la password: ")
-    password = passw.encode()
-    chiave = base64.urlsafe_b64encode(kdf().derive(password))
-    password = b""
-    print("Le password coincidono. Annota in un luogo segreto e sicuro la password, NON potrai recuperarla in alcun modo.")
+#    passw = pwinput.pwinput(prompt = "Scegli una password: ")
+#    passw2 = pwinput.pwinput(prompt= "Ripeti la password: ")
+#    while passw != passw2:
+#        print("Le password non coincidono. Ripeti.")
+#        passw = pwinput.pwinput(prompt = "Scegli una password: ")
+#        passw2 = pwinput.pwinput(prompt= "Ripeti la password: ")
+#    password = passw.encode()
+#    chiave = base64.urlsafe_b64encode(kdf().derive(password))
+#    password = b""
+    chiave = impostaPassword()
+    print("Password impostata. \nAnnotala in un luogo segreto e sicuro: NON potrai recuperarla in alcun modo.")
     print("Configuriamo i dati del client e-service di INAD. Li trovi nel back-office della PDND.")
     #seguono i parametri che servono per contattare il client e-service INAD su PDND.
     #alcuni sono predefiniti e non vengono chiesti.
     #Si possono modificare o sostituire con la stringa vuota "" per inserire interattivamente.
-    configINAD = {
+    INAD = {
                   "kid" : "",
                   "typ" : "JWT",
                   "iss" : "",
@@ -345,13 +411,13 @@ if os.path.exists("INAD.cfg") is False:
                   "baseURL" : "https://domiciliodigitaleapi.oscl.infocamere.it/rest/inad/v1/domiciliodigitale"
                  }
     lista = []
-    for i in configINAD:
-        if configINAD[i] == "":
+    for i in INAD:
+        if INAD[i] == "":
             lista.append(i)
     for i in lista:
         value = input(i+": ")
-        configINAD[i] = value
-    cifraDizionario(configINAD, chiave, "INAD.cfg")
+        INAD[i] = value
+    cifraDizionario(INAD, chiave, "INAD.cfg")
     print("Dati del client e-service configurati.")
     print("Configuriamo la chiave privata.")
     nomeFileChiave = input("Nome del file della chiave privata (es.: key.priv): ")
@@ -406,25 +472,24 @@ else:
 #Verifica se configurazione presente e chiedi e verifica password.
 if "chiave" in locals():
     print("\nSei già loggato. Proseguiamo.")
-    termina()
 else:
     passw = pwinput.pwinput()
     password = passw.encode()
     chiave = base64.urlsafe_b64encode(kdf().derive(password))
     password = b""
-passwordCorretta = False
-while passwordCorretta is False:
-    with open("INAD.cfg", "r") as f:
-        try:
-            INAD = decifraDizionario("INAD.cfg", chiave)
-            print("La password è corretta.")
-            passwordCorretta = True
-        except:
-            print("La password NON è corretta.")
-            passw = pwinput.pwinput()
-            password = passw.encode()
-            chiave = base64.urlsafe_b64encode(kdf().derive(password))
-            password = b""
+    passwordCorretta = False
+    while passwordCorretta is False:
+        with open("INAD.cfg", "r") as f:
+            try:
+                INAD = decifraDizionario("INAD.cfg", chiave)
+                print("La password è corretta.")
+                passwordCorretta = True
+            except:
+                print("La password NON è corretta.")
+                passw = pwinput.pwinput()
+                password = passw.encode()
+                chiave = base64.urlsafe_b64encode(kdf().derive(password))
+                password = b""
 
 continuare = True
 while continuare is True:
@@ -434,6 +499,9 @@ while continuare is True:
     scelta = ""
     while scelta not in ["1", "2", "3", "4", "U", "u"]:
         scelta = input("Cosa vuoi fare? Scegli 1, 2, 3 o 4 (U per uscire): ")
+    if scelta in ["U", "u"]:
+        print("\nCiao " + callingUser + ", è stato un piacere fare affari con te ;)")
+        termina()
 
     ##verifico presenza di un token valido (file INAD.tkn)
     tokenDisponibile = False
@@ -453,17 +521,20 @@ while continuare is True:
         else:
             print("Nessun token valido è disponibile. Ne ottengo uno.")
             privateKey = recuperaChiave("chiave.priv", chiave)
-            client_assertion = create_m2m_client_assertion(INAD["kid"], INAD["alg"], INAD["typ"], INAD["iss"], INAD["sub"], INAD["aud"], privateKey, INAD["PurposeID"])
-            token_response = token_request(INAD["iss"], client_assertion, INAD["Client_assertion_type"], INAD["Grant_type"])
+            client_assertion = create_m2m_client_assertion(INAD["kid"], INAD["alg"], INAD["typ"],
+                INAD["iss"], INAD["sub"], INAD["aud"], privateKey, INAD["PurposeID"])
+            token_response = token_request(INAD["iss"], client_assertion,
+                INAD["Client_assertion_type"], INAD["Grant_type"])
             tokenDict = {}
             if token_response.status_code == 200:
                 tokenDict["token"] = token_response.json()["access_token"]
                 tokenDict["creato"] = token_response.headers["date"]
                 cifraDizionario(tokenDict, chiave, "INAD.tkn")
                 print("Ho creato il token (o voucher). Proseguiamo...")
+                token = tokenDict["token"]
                 tokenDisponibile = True
             else:
-                print("Non sono riuscito a creare il token, guarda un po\' token_response cosa dice..")
+                print("Non sono riuscito a creare il token. Di seguito la risposta completa.")
                 try:
                     print(token_response.content.decode())
                 except:
@@ -474,8 +545,8 @@ while continuare is True:
 ######  ESTRAZIONE PUNTUALE #
 #############################
     if scelta == "1":
-        print(scelta + " - Estrazione puntuale")
-        cf = input("Inserisci il codice fiscale per cui estrarre il domicilio digitale: ")
+        print("\n"+scelta + " - Estrazione puntuale\n")
+        cf = chiediCF()
         ref = input("Inserisci un riferimento al procedimento amministrativo: ")
         estrazione = estrai(token, cf, ref)
         if estrazione.status_code == 200:
@@ -507,15 +578,15 @@ while continuare is True:
             except:
                 print(estrazione.content)
 #############################
-######  VARIFICA PUNTUALE ###
+######  VERIFICA PUNTUALE ###
 #############################
     elif scelta == "2":
-        print(scelta + " - Verifica puntuale")
-        cf = input("Inserisci il codice fiscale per cui verificare il domicilio digitale: ")
-        mail = input("Inserisci l\'indirizzo PEC da verificare: ")
-        data = input ("Inserisci la data alla quale verificare (AAAA-MM-GG): ")
+        print("\n"+scelta + " - Verifica puntuale\n")
+        cf = chiediCF()
+        mail = chiediMail()
+        data = chiediData()
         ref = input("Inserisci un riferimento al procedimento amministrativo: ")
-        verifica = verifica(token, cf, ref, mail, data)
+        verifica = verificaDomicilio(token, cf, ref, mail, data)
         if verifica.status_code == 200:
             try:
                 if verifica.json()["outcome"] is True:
@@ -523,7 +594,7 @@ while continuare is True:
                 elif verifica.json()["outcome"] is False:
                     print("La verifica del domicilio digitale "+ mail +" per "+cf+" ha dato esito NEGATIVO.")
             except:
-                print("L\'interazione è andata a buon fine, ma probabilmente il servizio è chiuso. Leggi sopra.")
+                print("L\'interazione è andata a buon fine, ma probabilmente il servizio è chiuso.")
             print("Di seguito la response completa:")
             try:
                 print(verifica.content.decode())
@@ -555,9 +626,9 @@ while continuare is True:
 ######  ESTRAZIONE MASSIVA ##
 #############################
     elif scelta == "3":
-        print(scelta + " - Estrazione multipla")
+        print("\n"+scelta + " - Estrazione multipla\n")
         print("Per questa operazione hai bisogno di un file CSV, delimitato da ;, con una colonna che contiene i codici fiscali per i quali estrarre il domicilio.")
-        print("Copialo nella cartella del programma, per tua facilità.")
+        print("Copialo nella cartella del programma, per tua facilità.\n")
         ref = input("Per iniziare, indica una breve descrizione del motivo della ricerca su INAD: ")
         # Individuo il file CSV con i dati in input
         nomeFileDati = input("Indica il nome del file CSV: ")
@@ -570,7 +641,7 @@ while continuare is True:
                 nomeFileDati = input(
                     "File "+ nomeFileDati + " non trovato. Verifica e inserisci di nuovo il nome del file CSV: "
                     )
-        print("File CSV trovato.")  
+        print("File CSV trovato.\n")
         # Inizializzo la cartella di lotto e i file di output e log
         data_lotto = timestamp()
         path=crea_cartella(ref, data_lotto) # crea la cartella di lavoro del lotto
@@ -586,12 +657,14 @@ while continuare is True:
         outputCSV = path + "elaborato-"+nomeFileDati
         # Definisco un paio di funzioni per creare il log di lotto con eventuali messaggio a video
         def logga(stringa):
+            '''Scrive una stringa nel log di lotto'''
             with open(lottoLog, "a+") as fileLog:
                 rigaDiLog=[timestamp(),stringa]
                 fileLog.write(";".join(rigaDiLog))
                 fileLog.write("\n")
                 fileLog.flush()
         def stampa(stringa):
+            '''Scrive una stringa a schermo e nel log di lotto'''
             print(stringa)
             with open(lottoLog, "a+") as fileLog:
                 rigaDiLog=[timestamp(),stringa]
@@ -611,10 +684,11 @@ while continuare is True:
         with open(lottoJson, "w+") as file:
             file.write(json.dumps(lotto, sort_keys=False, indent=4))
         ## Definisco la colonna che contiene il codice fiscale
-        print("Il CSV importato ha le seguenti chiavi:")
+        print("\nIl CSV importato ha le seguenti chiavi:")
         chiaviCSV = list(lotto[0].keys())
         for i in chiaviCSV:
             print(i)
+        print("\n")
         chiaveCF = input("Indicare la chiave che contiene il codice fiscale: ")
         while not chiaveCF in chiaviCSV:
             chiaveCF = input("Indicare la chiave che contiene il codice fiscale: ")
@@ -624,10 +698,11 @@ while continuare is True:
             listaCF.append(i[chiaveCF])
         stampa("Ho estratto la lista di codici fiscali per cui richiedere il domicilio digitale.")
         # Carico la lista su INAD e definisco intervallo di polling
+        stampa("Carico la lista su INAD.")
         invio = caricaLista(token, listaCF, ref)
         L = len(listaCF)
         #pausa = 120 + 2 * L
-        pausa = 320  #usato in attesa di capire quale sia l'intervallo corretto        
+        pausa = 320  #usato in attesa di capire quale sia l'intervallo corretto 
         if invio.status_code == 202:
             with open(ricevutaJson, "w") as file:
                 ricevuta = invio.json()
@@ -638,8 +713,7 @@ while continuare is True:
                 file.write(json.dumps(ricevuta,sort_keys=False, indent=4))
             stampa("Lista dei file inviata correttamente. Attendo " + str(pausa) + " secondi per verificare lo stato della richiesta.")
             stampa("Ho salvato la ricevuta della richiesta nella cartella di lotto.")
-            #stampa("Puoi interrompere l'esecuzione del programma con CTRL+C e recuperare il risultato della ricerca con lo script recuperaLista.py.")
-            # QUI CI METTIAMO UNA COSA: attendi o recuperi dopo?
+            stampa("Puoi interrompere l'esecuzione del programma (CTRL+C) e recuperare i risultati in seguito.")
         else:
             stampa("Qualcosa è andato storto. Puoi controllare i log nella cartella di lotto.")
             stampa("Di seguito la risposta completa.")
@@ -650,7 +724,7 @@ while continuare is True:
         # Recupero lo stato dell'elaborazione della lista
         idLista = ricevuta["id"]
         listaPronta = False
-        while listaPronta == False:
+        while listaPronta is False:
             verifica = statoLista(token, idLista)
             if verifica.status_code == 303: ## poi sarà 303:
                 listaPronta = True
@@ -758,12 +832,14 @@ while continuare is True:
         outputCSV = path + "elaborato-"+nomeFileDati
         # Definisco un paio di funzioni per creare il log di lotto con eventuali messaggio a video
         def logga(stringa):
+            '''Scrive una stringa nel log di lotto'''
             with open(lottoLog, "a+") as fileLog:
                 rigaDiLog=[timestamp(),stringa]
                 fileLog.write(";".join(rigaDiLog))
                 fileLog.write("\n")
                 fileLog.flush()
         def stampa(stringa):
+            '''Scrive una stringa a schermo e nel log di lotto'''
             print(stringa)
             with open(lottoLog, "a+") as fileLog:
                 rigaDiLog=[timestamp(),stringa]
@@ -784,7 +860,7 @@ while continuare is True:
         # Verifico lo stato di elaborazione della lista
         # Recupero lo stato dell'elaborazione della lista
         listaPronta = False
-        while listaPronta == False:
+        while listaPronta is False:
             verifica = statoLista(token, idLista)
             if verifica.status_code == 303:
                 listaPronta = True
@@ -861,7 +937,7 @@ while continuare is True:
             writer.writerows(lottoElaborato)
         stampa("Io avrei finito. Il file "+outputCSV+ " è il file CSV che hai caricato con una colonna aggiuntiva per i domicili digitali trovati.")
         stampa("Se qualche soggetto ha più di un domicilio registrato e/o ha indicato una professione, nel CSV creato trovi ulteriori colonne.")
-        
+
 #############################
 ####  USCITA DAL PROGRAMMA ##
 #############################

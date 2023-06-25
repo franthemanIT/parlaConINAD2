@@ -164,3 +164,6 @@ INAD.tkn
 20*
 generatore/*.priv
 generatore/*.pub
+*.log
+bozze/
+prova/

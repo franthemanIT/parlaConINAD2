@@ -32,6 +32,13 @@ Al primo avvio lo script richiede alcune informazioni:
 - i dati del client e-service INAD. Questi sono recuperabili dal back office PDND: conviene tenere la pagina del client e-services sulla PDND apera e fare copia e incolla;
 - la chiave privata associata alla chiave pubblica inserita nel client e-service: occorre salvare il file della chiave privata temporaneamente nella cartella di parlaConINAD2 e, una volta configurata, spostarlo.
 
+La password deve soddisfare i seguenti requisiti:
+- ha lunghezza da 8 a 20 caratteri;
+- contiene una lettera maiuscola;
+- contiene una lettera minuscola;
+- contiene un numero;
+- contiene un carattere speciale (fra !, #, $, &, ?).
+
 Se si perde la password occorre cancellare i file "INAD.cfg" e "chiave.priv" e ripetere la configurazione.
 I file di log e le cartelle di lotto di precedenti estrazioni multiple non andranno perduti.
 
@@ -46,7 +53,8 @@ Rispetto alla prima versione sono stati migliorati i seguenti aspetti di sicurez
 - conseguentemente, chi ha accesso alla cartella non li vede in chiaro;
 - i dati sono cifrati con una chiave ricavata dalla password impostata al primo avvio: per questo la password non è memorizzata in alcun modo (nemmeno come hash);
 - di conseguenza chi non conosce la password non può utilizzare efficacemente lo script;
-- è stata leggermente migliorata la gestione di errori e eccezioni.
+- è stata leggermente migliorata la gestione di errori e eccezioni;
+- sono adesso presenti controlli sul formato dei dati di input per codici fiscali / partiva IVA, date e indirizzi e-mail.
 
 Ricordando che lo script fa accesso a INAD che è una banca dati liberamente consultabile via web da chiunque senza autenticazione, le misure di sicurezza adottate sono minime.  
 Sembrava corretto proteggere i dati di autenticazione alle API per evitare comunque accessi autenticati abusivi. Durante l'esecuzione dello script i dati cifrati vengono decifrati.  
