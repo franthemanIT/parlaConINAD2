@@ -8,7 +8,10 @@ L'interazione avviene tramite linee di comando:
 - per interrogazioni singole con richiesta di inserire i dati della richiesta;
 - per interrogazioni massive con richiesta di fornire un file CSV con una colonna di codici fiscali. Lo script **restituisce lo stesso CSV con aggiunta dei dati del domicilio digitale**.
 
-Rispetto alla precedente versione di parlaConINAD c'è un unico fle di script che ingloba la definizione delle funzioni e tutte le operazioni messe a disposizione da INAD.    
+Rispetto alla precedente versione di parlaConINAD:
+- c'è un unico fle di script che ingloba la definizione delle funzioni e tutte le operazioni messe a disposizione da INAD;
+- anche la configurazion, al primo avvio, è interattiva da riga di comando;
+- i dati di configurazione sono cifrati e per avviare lo script occorre una password (vedi sotto).
 
 Un file con codici fiscali registrati nell'ambiente INAD di collaudo è disponibile sul repository GitHub delle API di INAD: https://github.com/AgID/INAD_API_Extraction/blob/main/datasetCampione.csv
 
