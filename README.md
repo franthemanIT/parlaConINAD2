@@ -120,7 +120,8 @@ L'interazione prosegue poi come nella funzione 3: interrogazione periodica dello
 
 # La cartella di lotto
 
-Durante l'esecuzione delle funzioni 3 e 4, lo script genera una cartella, detta cartella di lotto, che contiene gli esiti dell'elaborazione e file tecnici intermedi:
+Durante l'esecuzione delle funzioni 3 e 4, lo script genera una cartella, detta cartella di lotto, contenuta nella cartella "lotti".  
+La cartella di lotto ha un nome basato sul patterno "TIMESTAMP - descrizione dell'interrogazione" e contiene gli esiti dell'elaborazione e file tecnici intermedi:
 - un file JSON con il contenuto del file CSV ricevuto in input;
 - log del lotto: include parte di quanto scritto a video;
 - log di requests (chiamate HTTP a INAD);
