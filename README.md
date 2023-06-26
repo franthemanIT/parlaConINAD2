@@ -10,7 +10,7 @@ L'interazione avviene tramite linee di comando:
 
 Rispetto alla precedente versione di parlaConINAD c'è un unico fle di script che ingloba la definizione delle funzioni e tutte le operazioni messe a disposizione da INAD.    
 
-PS: nell'ambiente INAD di collaudo ci sono dei domicili fittizi registrati, ma mi sembrano riferibili a chi sta lavorando al suo sviluppo, quindi non li ho resi visibili nel repository. Io li ho ricevuti dall'assistenza Infocamere: https://domiciliodigitale.gov.it/aswsWeb/selectLanding?idProduct=INAD&userRole=inadpa 
+Un file con codici fiscali registrati nell'ambiente INAD di collaudo è disponibile sul repository GitHub delle API di INAD: https://github.com/AgID/INAD_API_Extraction/blob/main/datasetCampione.csv
 
 # Prerequisiti e configurazione
 

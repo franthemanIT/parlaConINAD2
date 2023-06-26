@@ -90,15 +90,20 @@ def chiedi_data():
     return y
 
 ## Funzioni che servono per la manipolazione di file di input e output
-def crea_cartella(descrizione, dataeora=timestamp()):
+def crea_cartella(descrizione, data_e_ora=timestamp()):
     '''Crea una sottocartella nella cartella di esecuzione dello script
-    Se l'argomento dataeora è nullo, usa un timestamp al suo posto.
-    (Quindi si può modificare con un dataeora=timestamp :)'''
-    #x = timestamp() if dataeora=="" else dataeora
-    path="./" + dataeora + "-" + descrizione + "/"
+    Se l'argomento data_e_ora è nullo, usa un timestamp al suo posto.
+    (Quindi si può modificare con un data_e_ora=timestamp :)'''
+    #x = timestamp() if data_e_ora=="" else data_e_ora
+    path="./lotti/" + data_e_ora + "-" + descrizione + "/"
     if not os.path.isdir(path):
         os.mkdir(path)
     return path
+
+def salva_dizionario(dizionario, file_out):
+    '''Salva un dizionario in un file JSON'''
+    with open(file_out, "w+") as file:
+        file.write(json.dumps(dizionario, sort_keys=False, indent=4))
 
 ## Funzioni che servono per il logging
 def log_request(log_file, request_time, verbo, metodo, info):
@@ -366,6 +371,66 @@ def preleva_lista(token, id_lista):
         log_response(log_file, response_time, request_time, r.status_code, info)
     return r
 
+## Funzioni per l'elaborazione delle estrazioni di INAD
+
+def salva_lista_domicili(token, id_lista, file_out):
+    '''Recupera l'elaborazione massiva, la salva in un file e restitiusce un dizionario'''
+    dizionario = preleva_lista(token, id_lista)
+    if dizionario.status_code == 200:
+        try:
+            salva_dizionario(dizionario.json(), file_out)
+            stampa("Ho recuperato la lista dei domicili digitali.")
+            stampa("La trovi nel file " + file_out + " nella cartella di lavoro.")
+            dizionario_out = dizionario.json()["list"]
+            return dizionario_out
+        except:
+            stampa("Probabilmente il server di INAD sta riposando.")
+            stampa("Interrompo l'esecuzione del programma. Puoi recuperare i risultati "\
+                   "dell'estrazione in seguito.")
+            stampa(dizionario.content)
+            termina()
+    else:
+        stampa("Qualcosa è andato storto. Ti invito a guardare i file di log "\
+               "e riprovare più tardi.")
+    
+def elabora_lotto(dizionario_in, dizionario_join, colonna_join, file_out, csv_out):
+    '''Unisce e restituisce il dizionario di lotto e il dizionario dei domicili estratti
+    in un nuovo dizionario e crea un file CSV'''
+    dizionario_out = []
+    for soggetto in dizionario_in:
+        dizio = {}
+        dizio.update(soggetto)
+        valore_cf = soggetto[colonna_join]
+        for risultato in dizionario_join:
+            if risultato["codiceFiscale"] == valore_cf:
+                if "digitalAddress" in risultato:
+                    for address in risultato["digitalAddress"]:
+                        indice = risultato["digitalAddress"].index(address)
+                        suffisso = ("" if indice == 0 else str(indice+1))
+                        dizio.update({"domicilioDigitale"+suffisso : address["digitalAddress"]})
+                        if "practicedProfession" in address:
+                            dizio.update({"professione"+suffisso : address["practicedProfession"]})
+                break
+        dizionario_out.append(dizio)
+    salva_dizionario(dizionario_out, file_out)
+    N = 0
+    for i in dizionario_out:
+        l=len(i)
+        if l > N:
+            posiz = dizionario_out.index(i) # la posizione dell'elemento
+        N = max(N,l)
+    fieldnames = list(dizionario_out[posiz].keys())
+    with open(csv_out, "w") as outputfile:
+        writer = csv.DictWriter(outputfile, fieldnames=fieldnames, delimiter = ";", lineterminator="\n")
+        outputfile.write(";".join(fieldnames))
+        outputfile.write("\n")
+        writer.writerows(dizionario_out)
+    stampa("Io avrei finito. Il file " + csv_out + " è il file CSV "\
+           "che hai caricato con una colonna aggiuntiva per i domicili digitali trovati.")
+    stampa("Se qualche soggetto ha più di un domicilio registrato "\
+           "e/o ha indicato una professione, nel CSV creato trovi ulteriori colonne.")
+    return dizionario_out
+    
 DURATA_TOEKN = 86400
 
 #####################################
@@ -376,6 +441,8 @@ DURATA_TOEKN = 86400
 ### INSTALLAZIONE AL PRIMO AVVIO ####
 #####################################
 print("Benvenuto "+CALLING_USER+".")
+if os.path.exists("lotti/") is False:
+    os.mkdir("./lotti/")
 if os.path.exists("INAD.cfg") is False:
     print("Il programma non è configurato.")
     print("Copia il file della chiave privata associata alla chiave pubblica "\
@@ -649,15 +716,15 @@ while CONTINUARE is True:
         print("Copialo nella cartella del programma, per tua facilità.\n")
         ref = input("Per iniziare, indica una breve descrizione del motivo della ricerca su INAD: ")
         # Individuo il file CSV con i dati in input
-        nome_file_dati = input("Indica il nome del file CSV: ")
+        NOME_FILE_DATI = input("Indica il nome del file CSV: ")
         FILE_DATI_TROVATO = False
         while FILE_DATI_TROVATO is False:
-            if os.path.exists(nome_file_dati):
+            if os.path.exists(NOME_FILE_DATI):
                 FILE_DATI_TROVATO = True
                 print("File trovato.")
             else:
-                nome_file_dati = input(
-                    "File "+ nome_file_dati + " non trovato. "\
+                NOME_FILE_DATI = input(
+                    "File "+ NOME_FILE_DATI + " non trovato. "\
                     "Verifica e inserisci di nuovo il nome del file CSV: "
                     )
         print("File CSV trovato.\n")
@@ -673,59 +740,59 @@ while CONTINUARE is True:
         REQUESTS_LOG = PATH + DATA_LOTTO + "-" + "Requests.log"
         fh = logging.FileHandler(REQUESTS_LOG)
         log.addHandler(fh)
-        OUTPUT_CSV = PATH + "elaborato-"+nome_file_dati
+        OUTPUT_CSV = PATH + "elaborato-"+NOME_FILE_DATI
         # Definisco un paio di funzioni per creare il log di lotto con eventuali messaggio a video
         def logga(stringa):
             '''Scrive una stringa nel log di lotto'''
-            with open(LOTTO_LOG, "a+") as fileLog:
+            with open(LOTTO_LOG, "a+") as file:
                 riga_di_log=[timestamp(),stringa]
-                fileLog.write(";".join(riga_di_log))
-                fileLog.write("\n")
-                fileLog.flush()
+                file.write(";".join(riga_di_log))
+                file.write("\n")
+                file.flush()
         def stampa(stringa):
             '''Scrive una stringa a schermo e nel log di lotto'''
             print(stringa)
-            with open(LOTTO_LOG, "a+") as fileLog:
+            with open(LOTTO_LOG, "a+") as file:
                 riga_di_log=[timestamp(),stringa]
-                fileLog.write(";".join(riga_di_log))
-                fileLog.write("\n")
-                fileLog.flush()
+                file.write(";".join(riga_di_log))
+                file.write("\n")
+                file.flush()
         logga("Ciao " + os.getlogin() + "!") #apre il lotto di log salutando l'utente
         stampa("Ho creato la cartella di lotto: "+PATH)
         logga("Data della richiesta: "+DATA_LOTTO)
         logga("Motivo della richiesta: "+ref)
         ## Estraggo il file CSV e creo un array di dizionari e un file json nella cartella di lotto
-        with open(nome_file_dati, "r") as input_file:
+        with open(NOME_FILE_DATI, "r") as input_file:
             reader = csv.DictReader(input_file, delimiter=";")
-            lotto = []
+            LOTTO = []
             for i in reader:
-                lotto.append(i)
+                LOTTO.append(i)
         with open(LOTTO_JSON, "w+") as file:
-            file.write(json.dumps(lotto, sort_keys=False, indent=4))
+            file.write(json.dumps(LOTTO, sort_keys=False, indent=4))
         ## Definisco la colonna che contiene il codice fiscale
         print("\nIl CSV importato ha le seguenti chiavi:")
-        chiaviCSV = list(lotto[0].keys())
-        for i in chiaviCSV:
+        CHIAVI_CSV = list(LOTTO[0].keys())
+        for i in CHIAVI_CSV:
             print(i)
         print("\n")
         CHIAVE_CF = input("Indicare la chiave che contiene il codice fiscale: ")
-        while not CHIAVE_CF in chiaviCSV:
+        while not CHIAVE_CF in CHIAVI_CSV:
             CHIAVE_CF = input("Indicare la chiave che contiene il codice fiscale: ")
         ## Estraggo lista di codici fiscali per INAD
-        listaCF = []
-        for i in lotto:
-            listaCF.append(i[CHIAVE_CF])
+        LISTA_CF = []
+        for i in LOTTO:
+            LISTA_CF.append(i[CHIAVE_CF])
         stampa("Ho estratto la lista di codici fiscali per cui richiedere il domicilio digitale.")
         # Carico la lista su INAD e definisco intervallo di polling
         stampa("Carico la lista su INAD.")
-        invio = carica_lista(token, listaCF, ref)
-        L = len(listaCF)
+        invio = carica_lista(token, LISTA_CF, ref)
+        L = len(LISTA_CF)
         #PAUSA = 120 + 2 * L
         PAUSA = 320  #usato in attesa di capire quale sia l'intervallo corretto
         if invio.status_code == 202:
             with open(RICEVUTA_JSON, "w") as file:
                 ricevuta = invio.json()
-                ricevuta["nomeFileDati"] = nome_file_dati
+                ricevuta["nomeFileDati"] = NOME_FILE_DATI
                 ricevuta["cartellaDiLavoro"] = PATH
                 ricevuta["data_lotto"] = DATA_LOTTO
                 ricevuta["chiaveCF"] = CHIAVE_CF
@@ -759,7 +826,7 @@ while CONTINUARE is True:
                     stampa("La richiesta è ancora in elaborazione."
                            "\nAttendo "+str(PAUSA)+" secondi per verificare nuovamente. ")
                     stampa("Puoi interrompere il programma con CTRL+C e verificare "\
-                           "in seguito lo stato di elaborazione con recuperaLista.py.")
+                           "in seguito lo stato di elaborazione.")
                     time.sleep(PAUSA)
                 except:
                     stampa("Probabilmente il server di INAD sta riposando.")
@@ -773,60 +840,11 @@ while CONTINUARE is True:
                     file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
                 termina()
         # Quando la lista è pronta, recupero i domicili e li salvo in domiciliDigitali.json
-        domicili = preleva_lista(token, id_lista)
-        if domicili.status_code == 200:
-            try:
-                with open(DOMICILI_JSON, "w") as file:
-                    file.write(json.dumps(domicili.json(), sort_keys=False, indent = 4))
-                    stampa("Ho recuperato la lista dei domicili digitali.")
-                    stampa("La trovi nel file " + DOMICILI_JSON + " nella cartella di lavoro.")
-                    lista_domicili = domicili.json()["list"]
-            except:
-                stampa("Probabilmente il server di INAD sta riposando.")
-                stampa("Interrompo l'esecuzione del programma. Puoi recuperare i risultati "\
-                       "dell'estrazione in seguito.")
-                termina()
-        else:
-            stampa("Qualcosa è andato storto. Ti invito a guardare i file di log "\
-                   "e riprovare più tardi.")
-            termina()
-        ## Creo un nuovo array di dizionari a partire dall'array lotto
-        ## e nuovo csv con colonne aggiuntive per il codice fiscale e la professione eventuale.
-        lottoElaborato = []
-        for soggetto in lotto:
-            dizio = {}
-            dizio.update(soggetto)
-            valore_cf = soggetto[CHIAVE_CF]
-            for risultato in lista_domicili:
-                if risultato["codiceFiscale"] == valore_cf:
-                    if "digitalAddress" in risultato:
-                        for address in risultato["digitalAddress"]:
-                            indice = risultato["digitalAddress"].index(address)
-                            suffisso = ("" if indice == 0 else str(indice+1))
-                            dizio.update({"domicilioDigitale"+suffisso : address["digitalAddress"]})
-                            if "practicedProfession" in address:
-                                dizio.update({"professione"+suffisso : address["practicedProfession"]})
-                    break
-            lottoElaborato.append(dizio)
-        with open(LOTTO_ELABORATO_JSON, "w+") as file:
-            file.write(json.dumps(lottoElaborato, sort_keys=False, indent=4))
-        N = 0
-        for i in lottoElaborato:
-            l=len(i)
-            if l > N:
-                posiz = lottoElaborato.index(i) # la posizione dell'elemento
-            N = max(N,l)
-        fieldnames = list(lottoElaborato[posiz].keys())
-        with open(OUTPUT_CSV, "w") as outputfile:
-            writer = csv.DictWriter(outputfile, fieldnames=fieldnames, delimiter = ";", lineterminator="\n")
-            outputfile.write(";".join(fieldnames))
-            outputfile.write("\n")
-            writer.writerows(lottoElaborato)
-        stampa("Io avrei finito. Il file "+OUTPUT_CSV+ " è il file CSV "\
-               "che hai caricato con una colonna aggiuntiva per i domicili digitali trovati.")
-        stampa("Se qualche soggetto ha più di un domicilio registrato "\
-               "e/o ha indicato una professione, nel CSV creato trovi ulteriori colonne.")
-
+        DOMICILI = salva_lista_domicili(token, id_lista, DOMICILI_JSON)
+        ## Creo un nuovo array di dizionari a partire dall'array lotto e un
+        ## nuovo file CSV con colonne aggiuntive per il codice fiscale e la professione eventuale.
+        LOTTO_ELABORATO = elabora_lotto(LOTTO, DOMICILI, CHIAVE_CF, LOTTO_ELABORATO_JSON, OUTPUT_CSV)  #" o non "?
+        
 #############################
 ######  RECUPERO LISTA ######
 #############################
@@ -841,7 +859,7 @@ while CONTINUARE is True:
             try:
                 with open(nome_file_ricevuta, "rb") as file:
                     DATI_LOTTO = json.load(file)
-                    nome_file_dati = DATI_LOTTO["nomeFileDati"]
+                    NOME_FILE_DATI = DATI_LOTTO["nomeFileDati"]
                     PATH = DATI_LOTTO["cartellaDiLavoro"]
                     id_lista = DATI_LOTTO["id"]
                     DATA_LOTTO = DATI_LOTTO["data_lotto"]
@@ -863,30 +881,30 @@ while CONTINUARE is True:
         REQUESTS_LOG = PATH + DATA_LOTTO + "-" + "Requests.log"
         fh = logging.FileHandler(REQUESTS_LOG)
         log.addHandler(fh)
-        OUTPUT_CSV = PATH + "elaborato-"+nome_file_dati
+        OUTPUT_CSV = PATH + "elaborato-"+NOME_FILE_DATI
         # Definisco un paio di funzioni per creare il log di lotto con eventuali messaggio a video
         def logga(stringa):
             '''Scrive una stringa nel log di lotto'''
-            with open(LOTTO_LOG, "a+") as fileLog:
+            with open(LOTTO_LOG, "a+") as file:
                 riga_di_log=[timestamp(),stringa]
-                fileLog.write(";".join(riga_di_log))
-                fileLog.write("\n")
-                fileLog.flush()
+                file.write(";".join(riga_di_log))
+                file.write("\n")
+                file.flush()
         def stampa(stringa):
             '''Scrive una stringa a schermo e nel log di lotto'''
             print(stringa)
-            with open(LOTTO_LOG, "a+") as fileLog:
+            with open(LOTTO_LOG, "a+") as file:
                 riga_di_log=[timestamp(),stringa]
-                fileLog.write(";".join(riga_di_log))
-                fileLog.write("\n")
-                fileLog.flush()
+                file.write(";".join(riga_di_log))
+                file.write("\n")
+                file.flush()
         # Leggo i dati di lotto dal file json
         with open(LOTTO_JSON, "r") as file:
-            lotto = json.load(file)
-        listaCF = []
-        for i in lotto:
-            listaCF.append(i[CHIAVE_CF])
-        L = len(listaCF)
+            LOTTO = json.load(file)
+        LISTA_CF = []
+        for i in LOTTO:
+            LISTA_CF.append(i[CHIAVE_CF])
+        L = len(LISTA_CF)
         #PAUSA = 120 + 2 * L
         PAUSA = 320  #in attesa di capire come definirla in funzione di L
         stampa("Informazioni dal file "+nome_file_ricevuta +" importate.")
@@ -924,66 +942,10 @@ while CONTINUARE is True:
                     file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
                 termina()
         # Quando la lista è pronta, recupero i domicili e li salvo in domiciliDigitali.json
-        domicili = preleva_lista(token, id_lista)
-        if domicili.status_code == 200:
-            try:
-                with open(DOMICILI_JSON, "w") as file:
-                    file.write(json.dumps(domicili.json(), sort_keys=False, indent = 4))
-                    stampa("Ho recuperato la lista dei domicili digitali.")
-                    stampa("La trovi nel file " + DOMICILI_JSON + " nella cartella di lavoro.")
-                    lista_domicili = domicili.json()["list"]
-            except:
-                stampa("Probabilmente il server di INAD sta riposando.")
-                stampa("Di seguito la risposta completa.")
-                stampa(str(domicili.content.decode()))
-                stampa("Interrompo l'esecuzione del programma. Puoi recuperare "\
-                       "i risultati dell'estrazione in seguito.")
-                termina()
-        else:
-            stampa("Qualcosa è andato storto. Puoi recuperare i risultati più tardi.")
-            stampa("Di seguito la risposta completa.")
-            stampa(str(domicili.content.decode()))
-            stampa("Interrompo l'esecuzione del programma. Puoi recuperare "\
-                   "i risultati dell'estrazione in seguito.")
-            termina()
-        ## Creo un nuovo array di dizionari a partire dall'array lotto
-        ## e nuovo csv con colonne aggiuntive per il codice fiscale e la professione eventuale.
-        lottoElaborato = []
-        for soggetto in lotto:
-            dizio = {}
-            dizio.update(soggetto)
-            valore_cf = soggetto[CHIAVE_CF]
-            for risultato in lista_domicili:
-                if risultato["codiceFiscale"] == valore_cf:
-                    if "digitalAddress" in risultato:
-                        for address in risultato["digitalAddress"]:
-                            indice = risultato["digitalAddress"].index(address)
-                            suffisso = ("" if indice == 0 else str(indice+1))
-                            dizio.update({"domicilioDigitale"+suffisso : address["digitalAddress"]})
-                            if "practicedProfession" in address:
-                                dizio.update({"professione"+suffisso : address["practicedProfession"]})
-                    break
-            lottoElaborato.append(dizio)
-        with open(LOTTO_ELABORATO_JSON, "w+") as file:
-            file.write(json.dumps(lottoElaborato, sort_keys=False, indent=4))
-        N = 0
-        for i in lottoElaborato:
-            l=len(i)
-            if l > N:
-                posiz = lottoElaborato.index(i) # la posizione dell'elemento
-            N = max(N,l)
-        fieldnames = list(lottoElaborato[posiz].keys())
-        with open(OUTPUT_CSV, "w") as outputfile:
-            writer = csv.DictWriter(outputfile, fieldnames=fieldnames, delimiter = ";",
-                                    lineterminator="\n"
-                                    )
-            outputfile.write(";".join(fieldnames))
-            outputfile.write("\n")
-            writer.writerows(lottoElaborato)
-        stampa("Io avrei finito. Il file "+OUTPUT_CSV+ " è il file CSV che hai caricato "\
-               "con una colonna aggiuntiva per i domicili digitali trovati.")
-        stampa("Se qualche soggetto ha più di un domicilio registrato "\
-               "e/o ha indicato una professione, nel CSV creato trovi ulteriori colonne.")
+        DOMICILI = salva_lista_domicili(token, id_lista, DOMICILI_JSON)
+        ## Creo un nuovo array di dizionari a partire dall'array lotto e un
+        ## nuovo file CSV con colonne aggiuntive per il codice fiscale e la professione eventuale.
+        LOTTO_ELABORATO = elabora_lotto(LOTTO, DOMICILI, CHIAVE_CF, LOTTO_ELABORATO_JSON, OUTPUT_CSV)
 
 #############################
 ####  USCITA DAL PROGRAMMA ##
