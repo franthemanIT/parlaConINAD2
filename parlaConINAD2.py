@@ -3,6 +3,7 @@ Per l'autenticazione si fa riferimento alla PDND (Piattaforma Digitale Nazionale
 secondo il ModI.'''
 ## Autore: Francesco Del Castillo (2023)
 import datetime
+import time
 import sys
 import uuid
 import os
@@ -707,13 +708,13 @@ while CONTINUARE is True:
         for i in chiaviCSV:
             print(i)
         print("\n")
-        chiaveCF = input("Indicare la chiave che contiene il codice fiscale: ")
-        while not chiaveCF in chiaviCSV:
-            chiaveCF = input("Indicare la chiave che contiene il codice fiscale: ")
+        CHIAVE_CF = input("Indicare la chiave che contiene il codice fiscale: ")
+        while not CHIAVE_CF in chiaviCSV:
+            CHIAVE_CF = input("Indicare la chiave che contiene il codice fiscale: ")
         ## Estraggo lista di codici fiscali per INAD
         listaCF = []
         for i in lotto:
-            listaCF.append(i[chiaveCF])
+            listaCF.append(i[CHIAVE_CF])
         stampa("Ho estratto la lista di codici fiscali per cui richiedere il domicilio digitale.")
         # Carico la lista su INAD e definisco intervallo di polling
         stampa("Carico la lista su INAD.")
@@ -727,7 +728,7 @@ while CONTINUARE is True:
                 ricevuta["nomeFileDati"] = nome_file_dati
                 ricevuta["cartellaDiLavoro"] = PATH
                 ricevuta["data_lotto"] = DATA_LOTTO
-                ricevuta["chiaveCF"] = chiaveCF
+                ricevuta["chiaveCF"] = CHIAVE_CF
                 file.write(json.dumps(ricevuta,sort_keys=False, indent=4))
             stampa("Lista dei file inviata correttamente. Attendo " + str(PAUSA) + " "\
                    "secondi per verificare lo stato della richiesta.")
@@ -755,8 +756,8 @@ while CONTINUARE is True:
                 try:
                     with open(STATO_JSON, "w") as file:
                         file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
-                    stampa("La richiesta è ancora in elaborazione. Attendo "+str(PAUSA)+" "\
-                           "secondi per verificare nuovamente. ")
+                    stampa("La richiesta è ancora in elaborazione."
+                           "\nAttendo "+str(PAUSA)+" secondi per verificare nuovamente. ")
                     stampa("Puoi interrompere il programma con CTRL+C e verificare "\
                            "in seguito lo stato di elaborazione con recuperaLista.py.")
                     time.sleep(PAUSA)
@@ -779,7 +780,7 @@ while CONTINUARE is True:
                     file.write(json.dumps(domicili.json(), sort_keys=False, indent = 4))
                     stampa("Ho recuperato la lista dei domicili digitali.")
                     stampa("La trovi nel file " + DOMICILI_JSON + " nella cartella di lavoro.")
-                    listaDomicili = domicili.json()["list"]
+                    lista_domicili = domicili.json()["list"]
             except:
                 stampa("Probabilmente il server di INAD sta riposando.")
                 stampa("Interrompo l'esecuzione del programma. Puoi recuperare i risultati "\
@@ -795,9 +796,9 @@ while CONTINUARE is True:
         for soggetto in lotto:
             dizio = {}
             dizio.update(soggetto)
-            valoreCF = soggetto[chiaveCF]
-            for risultato in listaDomicili:
-                if risultato["codiceFiscale"] == valoreCF:
+            valore_cf = soggetto[CHIAVE_CF]
+            for risultato in lista_domicili:
+                if risultato["codiceFiscale"] == valore_cf:
                     if "digitalAddress" in risultato:
                         for address in risultato["digitalAddress"]:
                             indice = risultato["digitalAddress"].index(address)
@@ -844,7 +845,7 @@ while CONTINUARE is True:
                     PATH = DATI_LOTTO["cartellaDiLavoro"]
                     id_lista = DATI_LOTTO["id"]
                     DATA_LOTTO = DATI_LOTTO["data_lotto"]
-                    chiaveCF = DATI_LOTTO["chiaveCF"]
+                    CHIAVE_CF = DATI_LOTTO["chiaveCF"]
                     RICEVUTA_TROVATA = True
             except:
                 nome_file_ricevuta = input(
@@ -884,7 +885,7 @@ while CONTINUARE is True:
             lotto = json.load(file)
         listaCF = []
         for i in lotto:
-            listaCF.append(i[chiaveCF])
+            listaCF.append(i[CHIAVE_CF])
         L = len(listaCF)
         #PAUSA = 120 + 2 * L
         PAUSA = 320  #in attesa di capire come definirla in funzione di L
@@ -904,8 +905,8 @@ while CONTINUARE is True:
                 try:
                     with open(STATO_JSON, "w") as file:
                         file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
-                    stampa("La richiesta è ancora in elaborazione. Attendo "+str(PAUSA)+" "\
-                           "secondi per verificare nuovamente.")
+                    stampa("La richiesta è ancora in elaborazione.\n"
+                           "Attendo "+str(PAUSA)+" secondi per verificare nuovamente.")
                     stampa("Puoi interrompere il programma con CRTL+C e recuperare "\
                            "i risultati in un secondo momento.")
                     time.sleep(PAUSA)
@@ -930,7 +931,7 @@ while CONTINUARE is True:
                     file.write(json.dumps(domicili.json(), sort_keys=False, indent = 4))
                     stampa("Ho recuperato la lista dei domicili digitali.")
                     stampa("La trovi nel file " + DOMICILI_JSON + " nella cartella di lavoro.")
-                    listaDomicili = domicili.json()["list"]
+                    lista_domicili = domicili.json()["list"]
             except:
                 stampa("Probabilmente il server di INAD sta riposando.")
                 stampa("Di seguito la risposta completa.")
@@ -951,9 +952,9 @@ while CONTINUARE is True:
         for soggetto in lotto:
             dizio = {}
             dizio.update(soggetto)
-            valoreCF = soggetto[chiaveCF]
-            for risultato in listaDomicili:
-                if risultato["codiceFiscale"] == valoreCF:
+            valore_cf = soggetto[CHIAVE_CF]
+            for risultato in lista_domicili:
+                if risultato["codiceFiscale"] == valore_cf:
                     if "digitalAddress" in risultato:
                         for address in risultato["digitalAddress"]:
                             indice = risultato["digitalAddress"].index(address)
@@ -964,7 +965,8 @@ while CONTINUARE is True:
                     break
             lottoElaborato.append(dizio)
         with open(LOTTO_ELABORATO_JSON, "w+") as file:
-            file.write(json.dumps(lottoElaborato, sort_keys=False, indent=4))N = 0
+            file.write(json.dumps(lottoElaborato, sort_keys=False, indent=4))
+        N = 0
         for i in lottoElaborato:
             l=len(i)
             if l > N:
