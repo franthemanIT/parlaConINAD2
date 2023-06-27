@@ -488,7 +488,7 @@ def elabora_lotto(dizionario_in, dizionario_join, colonna_join, file_out, csv_ou
            "e/o ha indicato una professione, nel CSV creato trovi ulteriori colonne.")
     return dizionario_out
     
-DURATA_TOEKN = 86400
+DURATA_TOKEN = 86400
 
 #####################################
 ###INIZIO DELLO SCRIPT INTERATTIVO###
@@ -639,19 +639,22 @@ while CONTINUARE is True:
     TOKEN_DISPONIBILE = False
     while TOKEN_DISPONIBILE is False:
         if os.path.exists("INAD.tkn") is True:
+            print("Verifico se il token PDND è ancora valido.")
             try:
                 INADtoken = decifra_dizionario("INAD.tkn", chiave)
                 allora = datetime.datetime.strptime(INADtoken["creato"], "%a, %d %b %Y %H:%M:%S %Z")
                 adesso = datetime.datetime.now()
-                if int((adesso - allora).total_seconds()) < (DURATA_TOEKN-60):
+                if int((adesso - allora).total_seconds()) < (DURATA_TOKEN-60):
                     token = INADtoken["token"]
-                    print("\nIl token a disposizione è ancora valido.")
+                    print("Token valido.")
                     TOKEN_DISPONIBILE = True
-            #except (cryptography.fernet.InvalidToken, TypeError):
+                else:
+                    print("\Token non valido.")
+                    os.remove("INAD.tkn")
             except:
                 os.remove("INAD.tkn")
         else:
-            print("\nNessun token valido è disponibile. Ne ottengo uno.")
+            print("\nNessun token PDND valido è disponibile. Ne ottengo uno.")
             privateKey = recupera_chiave("chiave.priv", chiave)
             client_assertion = create_m2m_client_assertion(INAD["kid"], INAD["alg"], INAD["typ"],
                 INAD["iss"], INAD["sub"], INAD["aud"], privateKey, INAD["PurposeID"])
@@ -683,26 +686,26 @@ while CONTINUARE is True:
         estrazione = estrai_domicilio(token, cf, ref)
         if estrazione.status_code == 200:
             try:
-                print("Ecco il domicilio digitale di " + cf + ": "\
+                print("\nDomicilio digitale di " + cf + ": "\
                       +estrazione.json()["digitalAddress"][0]["digitalAddress"])
             except:
-                print("L\'interazione è andata a buon fine, "\
+                print("\nL\'interazione è andata a buon fine, "\
                       "ma probabilmente il servizio è chiuso.")
-            print("Di seguito la response completa:")
+            print("\nDi seguito la risposta completa di INAD:")
             try:
                 print(estrazione.content.decode())
             except:
                 print(estrazione.content)
         elif estrazione.status_code == 400:
-            print("Richiesta mal formulata: " +estrazione.json()["detail"])
+            print("\nRichiesta mal formulata: " +estrazione.json()["detail"])
         elif estrazione.status_code == 401:
-            print("Non autorizzato: " + estrazione.json()["error"])
+            print("\nNon autorizzato: " + estrazione.json()["error"])
         elif estrazione.status_code == 403:
-            print:("Operazione non consentita: " + estrazione.json()["detail"])
+            print:("\nOperazione non consentita: " + estrazione.json()["detail"])
         elif estrazione.status_code == 404:
             print(estrazione.json()["status"] +" - " + estrazione.json()["detail"])
-            print("Soggetto non trovato. Ragionevolmente, "+cf+" non è registrato su INAD")
-            print("Di seguito il contenuto completo della risposta: ")
+            print("\nSoggetto non trovato. Ragionevolmente, "+cf+" non è registrato su INAD")
+            print("\nDi seguito il contenuto completo della risposta: ")
             print(estrazione.json())
         else:
             print("Qualcosa è andato storto, "\
@@ -726,13 +729,13 @@ while CONTINUARE is True:
         if verifica.status_code == 200:
             try:
                 if verifica.json()["outcome"] is True:
-                    print("La verifica del domicilio digitale "+ mail +" per "+cf+" "\
-                          "ha dato esito POSITIVO.")
+                    print("\nLa verifica del domicilio digitale " + mail +" per "+cf+" "\
+                          "alla data " + data + " ha dato esito POSITIVO.")
                 elif verifica.json()["outcome"] is False:
-                    print("La verifica del domicilio digitale "+ mail +" per "+cf+" "\
-                          "ha dato esito NEGATIVO.")
+                    print("\nLa verifica del domicilio digitale " + mail +" per "+cf+" "\
+                          "alla data " + data + " ha dato esito NEGATIVO.")
             except:
-                print("L\'interazione è andata a buon fine, "\
+                print("\nL\'interazione è andata a buon fine, "\
                       "ma probabilmente il servizio è chiuso.")
             print("Di seguito la response completa:")
             try:
