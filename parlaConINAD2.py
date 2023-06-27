@@ -34,7 +34,7 @@ LOG_FILE_NAME="INAD.log"
 log = logging.getLogger("urllib3")
 log.setLevel(logging.DEBUG)
 
-## Funzioni che servono per l'interazione con l'utente
+## Funzioni e variabili globali che servono per l'interazione con l'utente
 def get_ip_address():
     '''Recupera e restituisce l'indirizzo IP dell'utente'''
     return socket.gethostbyname(socket.gethostname())
@@ -121,6 +121,25 @@ def log_response(log_file, response_time, request_time, status_code, info):
     log_file.write(";".join(riga_di_log))
     log_file.write("\n")
     log_file.flush()
+
+def logga(stringa, file_di_log = None):
+    '''Scrive una stringa nel log di lotto'''
+    file_di_log = file_di_log or LOTTO_LOG
+    with open(file_di_log, "a+") as file:
+        riga_di_log=[timestamp(),stringa]
+        file.write(";".join(riga_di_log))
+        file.write("\n")
+        file.flush()
+
+def stampa(stringa, file_di_log = None):
+    '''Scrive una stringa a schermo e nel log di lotto'''
+    file_di_log = file_di_log or LOTTO_LOG
+    print(stringa)
+    with open(file_di_log, "a+") as file:
+        riga_di_log=[timestamp(),stringa]
+        file.write(";".join(riga_di_log))
+        file.write("\n")
+        file.flush()
 
 def clear():
     '''Cancella la schermo'''
@@ -353,7 +372,7 @@ def stato_lista(token, id_lista):
         info = str(r.status_code)
         log_response(log_file, response_time, request_time, r.status_code, info)
     return r
-
+ 
 def preleva_lista(token, id_lista):
     '''Recupera da INAD una lista di codici fiscali 
     per i quali sono stati elaborati i domicili digitali'''
@@ -371,7 +390,45 @@ def preleva_lista(token, id_lista):
         log_response(log_file, response_time, request_time, r.status_code, info)
     return r
 
+
 ## Funzioni per l'elaborazione delle estrazioni di INAD
+
+def verifica_stato_lista(token, id_lista, output_json, pausa): #verifica = verifica_stato_lista(token, id_lista, STATO_JSON, PAUSA)
+    '''Interroga circa lo stato di elaborazione di una lista di domicili da estrarre.
+    Restituisce la response della chiamata.
+    In caso di response che non consente di proseguire nel programma, lo termina.'''
+    LISTA_PRONTA = False
+    while LISTA_PRONTA is False:
+        verify = stato_lista(token, id_lista)
+        if verify.status_code == 303:
+            LISTA_PRONTA = True
+            stampa("La richiesta è stata elaborata da INAD. Procedo a prelevarla.")
+            salva_dizionario(verify.json(), output_json)
+        elif verify.status_code == 200:
+            try:
+                salva_dizionario(verify.json(), output_json)
+                stampa("La richiesta è ancora in elaborazione.\n"
+                       "\nAttendo "+str(pausa)+" secondi per verificare nuovamente. ")
+                stampa("Puoi interrompere il programma con CTRL+C e verificare "\
+                       "in seguito lo stato di elaborazione.")
+                time.sleep(pausa)
+            except:
+                stampa("Probabilmente il server di INAD sta riposando.")
+                stampa("Interrompo l'esecuzione del programma. Puoi recuperare "\
+                       "i risultati dell'estrazione in seguito.")
+                termina()
+        elif verify.status_code in [400, 401, 403, 404, 500, 503]:
+            stampa("Il server ha risposto: " + verify.status_code +".")
+            for i in verify.json():
+                stampa(i +": " +verify.json()[i])
+            stampa("Termino il programma. Tu cerca di capire cosa non va ;)")
+            termina()
+        else:
+            stampa("Qualcosa non funziona. Magari è scaduto il token o chissà. "\
+                   "Termino il programma. Esegui la verifica più tardi.")
+            salva_dizionario(verify.json(), output_json)
+            termina()
+    return verify
 
 def salva_lista_domicili(token, id_lista, file_out):
     '''Recupera l'elaborazione massiva, la salva in un file e restitiusce un dizionario'''
@@ -565,12 +622,12 @@ CONTINUARE = True
 while CONTINUARE is True:
 
     ###Scegli la funzione da usare
-    print("\nparlaConINAD consente le seguenti funzioni: \n"\
+    print("\nparlaConINAD consente le seguenti funzioni: \n\n"\
           "1 - estrazione puntuale di un domicilio digitale; \n"\
           "2 - verifica puntuale di un domicilio fiscale; \n"\
           "3 - estrazione massiva di domicili digitali; \n"\
           "4 - recupero dei risultati di una lista precedentemente caricata; \n"\
-          "U - esci da parlaConINAD.")
+          "U - esci da parlaConINAD.\n")
     scelta = ""
     while scelta not in ["1", "2", "3", "4", "U", "u"]:
         scelta = input("Cosa vuoi fare? Scegli 1, 2, 3 o 4 (U per uscire): ")
@@ -588,13 +645,13 @@ while CONTINUARE is True:
                 adesso = datetime.datetime.now()
                 if int((adesso - allora).total_seconds()) < (DURATA_TOEKN-60):
                     token = INADtoken["token"]
-                    print("Il token a disposizione è ancora valido.")
+                    print("\nIl token a disposizione è ancora valido.")
                     TOKEN_DISPONIBILE = True
             #except (cryptography.fernet.InvalidToken, TypeError):
             except:
                 os.remove("INAD.tkn")
         else:
-            print("Nessun token valido è disponibile. Ne ottengo uno.")
+            print("\nNessun token valido è disponibile. Ne ottengo uno.")
             privateKey = recupera_chiave("chiave.priv", chiave)
             client_assertion = create_m2m_client_assertion(INAD["kid"], INAD["alg"], INAD["typ"],
                 INAD["iss"], INAD["sub"], INAD["aud"], privateKey, INAD["PurposeID"])
@@ -639,7 +696,7 @@ while CONTINUARE is True:
         elif estrazione.status_code == 400:
             print("Richiesta mal formulata: " +estrazione.json()["detail"])
         elif estrazione.status_code == 401:
-            print("Non autorizzato: " + estrazione.json()["detail"])
+            print("Non autorizzato: " + estrazione.json()["error"])
         elif estrazione.status_code == 403:
             print:("Operazione non consentita: " + estrazione.json()["detail"])
         elif estrazione.status_code == 404:
@@ -685,7 +742,7 @@ while CONTINUARE is True:
         elif verifica.status_code == 400:
             print("Richiesta mal formulata: " +verifica.json()["detail"])
         elif verifica.status_code == 401:
-            print("Non autorizzato: " + verifica.json()["detail"])
+            print("Non autorizzato: " + verifica.json()["error"])
             print("Di seguito il contenuto completo della risposta: ")
             print(verifica.json())
         elif verifica.status_code == 403:
@@ -706,6 +763,7 @@ while CONTINUARE is True:
                 print(verifica.content.decode())
             except:
                 print(verifica.content)
+
 #############################
 ######  ESTRAZIONE MASSIVA ##
 #############################
@@ -715,6 +773,7 @@ while CONTINUARE is True:
               "con una colonna che contiene i codici fiscali per i quali estrarre il domicilio.")
         print("Copialo nella cartella del programma, per tua facilità.\n")
         ref = input("Per iniziare, indica una breve descrizione del motivo della ricerca su INAD: ")
+
         # Individuo il file CSV con i dati in input
         NOME_FILE_DATI = input("Indica il nome del file CSV: ")
         FILE_DATI_TROVATO = False
@@ -728,6 +787,7 @@ while CONTINUARE is True:
                     "Verifica e inserisci di nuovo il nome del file CSV: "
                     )
         print("File CSV trovato.\n")
+
         # Inizializzo la cartella di lotto e i file di output e log
         DATA_LOTTO = timestamp()
         PATH=crea_cartella(ref, DATA_LOTTO) # crea la cartella di lavoro del lotto
@@ -741,34 +801,19 @@ while CONTINUARE is True:
         fh = logging.FileHandler(REQUESTS_LOG)
         log.addHandler(fh)
         OUTPUT_CSV = PATH + "elaborato-"+NOME_FILE_DATI
-        # Definisco un paio di funzioni per creare il log di lotto con eventuali messaggio a video
-        def logga(stringa):
-            '''Scrive una stringa nel log di lotto'''
-            with open(LOTTO_LOG, "a+") as file:
-                riga_di_log=[timestamp(),stringa]
-                file.write(";".join(riga_di_log))
-                file.write("\n")
-                file.flush()
-        def stampa(stringa):
-            '''Scrive una stringa a schermo e nel log di lotto'''
-            print(stringa)
-            with open(LOTTO_LOG, "a+") as file:
-                riga_di_log=[timestamp(),stringa]
-                file.write(";".join(riga_di_log))
-                file.write("\n")
-                file.flush()
         logga("Ciao " + os.getlogin() + "!") #apre il lotto di log salutando l'utente
         stampa("Ho creato la cartella di lotto: "+PATH)
         logga("Data della richiesta: "+DATA_LOTTO)
         logga("Motivo della richiesta: "+ref)
+
         ## Estraggo il file CSV e creo un array di dizionari e un file json nella cartella di lotto
         with open(NOME_FILE_DATI, "r") as input_file:
             reader = csv.DictReader(input_file, delimiter=";")
             LOTTO = []
             for i in reader:
                 LOTTO.append(i)
-        with open(LOTTO_JSON, "w+") as file:
-            file.write(json.dumps(LOTTO, sort_keys=False, indent=4))
+        salva_dizionario(LOTTO, LOTTO_JSON)
+
         ## Definisco la colonna che contiene il codice fiscale
         print("\nIl CSV importato ha le seguenti chiavi:")
         CHIAVI_CSV = list(LOTTO[0].keys())
@@ -778,11 +823,13 @@ while CONTINUARE is True:
         CHIAVE_CF = input("Indicare la chiave che contiene il codice fiscale: ")
         while not CHIAVE_CF in CHIAVI_CSV:
             CHIAVE_CF = input("Indicare la chiave che contiene il codice fiscale: ")
+
         ## Estraggo lista di codici fiscali per INAD
         LISTA_CF = []
         for i in LOTTO:
             LISTA_CF.append(i[CHIAVE_CF])
         stampa("Ho estratto la lista di codici fiscali per cui richiedere il domicilio digitale.")
+
         # Carico la lista su INAD e definisco intervallo di polling
         stampa("Carico la lista su INAD.")
         invio = carica_lista(token, LISTA_CF, ref)
@@ -790,57 +837,39 @@ while CONTINUARE is True:
         #PAUSA = 120 + 2 * L
         PAUSA = 320  #usato in attesa di capire quale sia l'intervallo corretto
         if invio.status_code == 202:
-            with open(RICEVUTA_JSON, "w") as file:
-                ricevuta = invio.json()
-                ricevuta["nomeFileDati"] = NOME_FILE_DATI
-                ricevuta["cartellaDiLavoro"] = PATH
-                ricevuta["data_lotto"] = DATA_LOTTO
-                ricevuta["chiaveCF"] = CHIAVE_CF
-                file.write(json.dumps(ricevuta,sort_keys=False, indent=4))
-            stampa("Lista dei file inviata correttamente. Attendo " + str(PAUSA) + " "\
+            ricevuta = invio.json()
+            ricevuta["nomeFileDati"] = NOME_FILE_DATI
+            ricevuta["cartellaDiLavoro"] = PATH
+            ricevuta["data_lotto"] = DATA_LOTTO
+            ricevuta["chiaveCF"] = CHIAVE_CF
+            salva_dizionario(ricevuta, RICEVUTA_JSON)
+            stampa("Lista dei file inviata correttamente. \nAttendo " + str(PAUSA) + " "\
                    "secondi per verificare lo stato della richiesta.")
             stampa("Ho salvato la ricevuta della richiesta nella cartella di lotto.")
             stampa("Puoi interrompere l'esecuzione del programma (CTRL+C) e "\
                    "recuperare i risultati in seguito.")
+        elif invio.status_code in [400, 404, 500, 503]:
+            stampa("Il server ha risposto: " + invio.status_code +".")
+            for i in invio.json():
+                stampa(i +": " +invio.json()[i])
+            stampa("Termino il programma. Tu cerca di capire cosa non va ;)")
+            termina()
         else:
             stampa("Qualcosa è andato storto. Puoi controllare i log nella cartella di lotto.")
             stampa("Di seguito la risposta completa.")
             stampa(str(invio.content.decode()))
             termina()
+
         # Attendo il tempo T = PAUSA
         time.sleep(PAUSA)
+
         # Recupero lo stato dell'elaborazione della lista
         id_lista = ricevuta["id"]
-        LISTA_PRONTA = False
-        while LISTA_PRONTA is False:
-            verifica = stato_lista(token, id_lista)
-            if verifica.status_code == 303: ## poi sarà 303:
-                LISTA_PRONTA = True
-                stampa("La richiesta è stata elaborata da INAD. Procedo a prelevarla.")
-                with open(STATO_JSON, "w") as file:
-                    file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
-            elif verifica.status_code == 200:
-                try:
-                    with open(STATO_JSON, "w") as file:
-                        file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
-                    stampa("La richiesta è ancora in elaborazione."
-                           "\nAttendo "+str(PAUSA)+" secondi per verificare nuovamente. ")
-                    stampa("Puoi interrompere il programma con CTRL+C e verificare "\
-                           "in seguito lo stato di elaborazione.")
-                    time.sleep(PAUSA)
-                except:
-                    stampa("Probabilmente il server di INAD sta riposando.")
-                    stampa("Interrompo l'esecuzione del programma. Puoi recuperare "\
-                           "i risultati dell'estrazione in seguito.")
-                    termina()
-            else:
-                stampa("Qualcosa non funziona. Magari è scaduto il token. "\
-                       "Termino il programma. Esegui la verifica più tardi.")
-                with open(STATO_JSON, "w") as file:
-                    file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
-                termina()
+        verifica = verifica_stato_lista(token, id_lista, STATO_JSON, PAUSA)
+
         # Quando la lista è pronta, recupero i domicili e li salvo in domiciliDigitali.json
         DOMICILI = salva_lista_domicili(token, id_lista, DOMICILI_JSON)
+
         ## Creo un nuovo array di dizionari a partire dall'array lotto e un
         ## nuovo file CSV con colonne aggiuntive per il codice fiscale e la professione eventuale.
         LOTTO_ELABORATO = elabora_lotto(LOTTO, DOMICILI, CHIAVE_CF, LOTTO_ELABORATO_JSON, OUTPUT_CSV)  #" o non "?
@@ -849,11 +878,11 @@ while CONTINUARE is True:
 ######  RECUPERO LISTA ######
 #############################
     elif scelta == "4":
-        print(scelta + " - Recupero risultati di precedente interrogazione multipla.")
-        print("Hai bisogno di una ricevuta in formato json di un precedente invio.")
+        print("\n" + scelta + " - Recupero risultati di precedente interrogazione multipla.")
+        print("\nHai bisogno di una ricevuta in formato json di un precedente invio.")
         print("Ti conviene copiarla dalla cartella di lotto "\
               "alla cartella di questo programma e rinominarla.")
-        nome_file_ricevuta = input("Inserisci il nome del file con la ricevuta: ")
+        nome_file_ricevuta = input("\nInserisci il nome del file con la ricevuta: ")
         RICEVUTA_TROVATA = False
         while RICEVUTA_TROVATA is False:
             try:
@@ -866,11 +895,19 @@ while CONTINUARE is True:
                     CHIAVE_CF = DATI_LOTTO["chiaveCF"]
                     RICEVUTA_TROVATA = True
             except:
+                print(f"\nFIle {nome_file_ricevuta} non trovato.")
+                RICEVUTE = []
+                for cartella, sottocartelle, files in os.walk(".\\lotti\\"):
+                    for file in files:
+                        if file[-13:] == "ricevuta.json":
+                            RICEVUTE.append(os.path.join(cartella, file))
+                print("\nPer aiutarti, queste sono le ultime cinque ricevute:")
+                for file in RICEVUTE[-5:]:
+                    print(file)
                 nome_file_ricevuta = input(
-                    "File "+ nome_file_ricevuta + " non trovato. "\
-                    "Verifica e inserisci di nuovo il nome del file CSV: "
-                    )
-        print("File della ricevuta trovato.")
+                    "\nInserisci di nuovo il nome del file della ricevuta: ")
+        print("\nFile della ricevuta trovato.")
+
         ## Inizializzazione di cartella di lotto, file di output e logging
         LOTTO_LOG=PATH + DATA_LOTTO + "-" + "lotto.log"
         RICEVUTA_JSON = PATH + DATA_LOTTO + "-ricevuta.json"
@@ -882,22 +919,7 @@ while CONTINUARE is True:
         fh = logging.FileHandler(REQUESTS_LOG)
         log.addHandler(fh)
         OUTPUT_CSV = PATH + "elaborato-"+NOME_FILE_DATI
-        # Definisco un paio di funzioni per creare il log di lotto con eventuali messaggio a video
-        def logga(stringa):
-            '''Scrive una stringa nel log di lotto'''
-            with open(LOTTO_LOG, "a+") as file:
-                riga_di_log=[timestamp(),stringa]
-                file.write(";".join(riga_di_log))
-                file.write("\n")
-                file.flush()
-        def stampa(stringa):
-            '''Scrive una stringa a schermo e nel log di lotto'''
-            print(stringa)
-            with open(LOTTO_LOG, "a+") as file:
-                riga_di_log=[timestamp(),stringa]
-                file.write(";".join(riga_di_log))
-                file.write("\n")
-                file.flush()
+
         # Leggo i dati di lotto dal file json
         with open(LOTTO_JSON, "r") as file:
             LOTTO = json.load(file)
@@ -909,40 +931,13 @@ while CONTINUARE is True:
         PAUSA = 320  #in attesa di capire come definirla in funzione di L
         stampa("Informazioni dal file "+nome_file_ricevuta +" importate.")
         stampa("Inizio il recupero della richiesta con id: "+id_lista +".")
+
         # Verifico lo stato di elaborazione della lista
-        # Recupero lo stato dell'elaborazione della lista
-        LISTA_PRONTA = False
-        while LISTA_PRONTA is False:
-            verifica = stato_lista(token, id_lista)
-            if verifica.status_code == 303:
-                LISTA_PRONTA = True
-                stampa("La richiesta è stata elaborata da INAD. Procedo a prelevarla.")
-                with open(STATO_JSON, "w") as file:
-                    file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
-            elif verifica.status_code == 200:
-                try:
-                    with open(STATO_JSON, "w") as file:
-                        file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
-                    stampa("La richiesta è ancora in elaborazione.\n"
-                           "Attendo "+str(PAUSA)+" secondi per verificare nuovamente.")
-                    stampa("Puoi interrompere il programma con CRTL+C e recuperare "\
-                           "i risultati in un secondo momento.")
-                    time.sleep(PAUSA)
-                except:
-                    stampa("Probabilmente il server di INAD sta riposando.")
-                    stampa("Di seguito la risposta completa.")
-                    stampa(str(verifica.content.decode()))
-                    stampa("Interrompo l'esecuzione del programma. Puoi recuperare "\
-                           "i risultati dell'estrazione in seguito.")
-                    termina()
-            else:
-                stampa("Qualcosa non funziona. Magari è scaduto il token. "\
-                       "Termino il programma. Puoi recuprare i risultati dell'estrazione in seguito.")
-                with open(STATO_JSON, "w") as file:
-                    file.write(json.dumps(verifica.json(), sort_keys=False, indent=4))
-                termina()
+        verifica = verifica_stato_lista(token, id_lista, STATO_JSON, PAUSA)
+
         # Quando la lista è pronta, recupero i domicili e li salvo in domiciliDigitali.json
         DOMICILI = salva_lista_domicili(token, id_lista, DOMICILI_JSON)
+
         ## Creo un nuovo array di dizionari a partire dall'array lotto e un
         ## nuovo file CSV con colonne aggiuntive per il codice fiscale e la professione eventuale.
         LOTTO_ELABORATO = elabora_lotto(LOTTO, DOMICILI, CHIAVE_CF, LOTTO_ELABORATO_JSON, OUTPUT_CSV)
@@ -961,5 +956,6 @@ while CONTINUARE is True:
                          "[S = sì / N = no]? ")
     if risposta in ["N", "no", "NO", "n"]:
         CONTINUARE = False
+
 # Quando è tutto finito, termina
 termina()
