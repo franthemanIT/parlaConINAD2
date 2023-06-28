@@ -1,12 +1,13 @@
 # parlaConINAD2
 
-**--> AGGIORNAMENTO <--  Trasformare in eseguibile Windows <--**  
+**--> AGGIORNAMENTO <--  --> Trasformare in eseguibile Windows <--**  
 
 Su sistemi Windows è possibile **trasformare lo script in un eseguibile** .exe che mantiene la stessa logica di funzionamento.  
 
 Istruzioni:
 - SE MANCA: pip install pyinstaller
 - pyinstaller parlaConINAD2 --onefile
+- 
 Sotto la cartella "dists" si recupera l'eseguibile Windows.
 Utile per usarlo su PC senza Python installato.
 
