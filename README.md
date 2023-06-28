@@ -1,6 +1,7 @@
 # parlaConINAD2
 
-** AGGIORNAMENTO **
+**--> AGGIORNAMENTO <--  Trasformare in eseguibile Windows <--**  
+
 Su sistemi Windows è possibile **trasformare lo script in un eseguibile** .exe che mantiene la stessa logica di funzionamento.  
 
 Istruzioni:
