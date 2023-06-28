@@ -238,6 +238,7 @@ def imposta_password():
     parola = password_1.encode()
     x = base64.urlsafe_b64encode(kdf().derive(parola))
     password_1 = ""
+    password_2 = ""
     parola = b""
     return x
 
@@ -567,6 +568,8 @@ elif os.path.exists("chiave.priv") is False:
         passw2 = pwinput.pwinput(prompt= "Ripeti la password: ")
     password = passw.encode()
     chiave = base64.urlsafe_b64encode(kdf().derive(password))
+    passw = ""
+    passw2 = ""
     password = b""
     print("Le password coincidono.")
     print("Copia il file con la chiave privata associata "\
@@ -603,6 +606,7 @@ else:
     passw = pwinput.pwinput()
     password = passw.encode()
     chiave = base64.urlsafe_b64encode(kdf().derive(password))
+    passw = ""
     password = b""
     PASSWORD_CORRETTA = False
     while PASSWORD_CORRETTA is False:
@@ -616,6 +620,7 @@ else:
                 passw = pwinput.pwinput()
                 password = passw.encode()
                 chiave = base64.urlsafe_b64encode(kdf().derive(password))
+                passw = ""
                 password = b""
 
 CONTINUARE = True
