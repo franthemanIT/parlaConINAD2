@@ -46,6 +46,10 @@ def timestamp():
     '''Restituisce il timestamp attuale in formato %Y%m%d-%H%M%S-%f'''
     return datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
 
+def timestamp_breve():
+    '''Restituisce il timestamp attuale in formato %Y%m%d-%H%M%S'''
+    return datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    
 def attendi():
     '''Richiede un'interazione dell'utente per proseguire'''
     input("Premi INVIO/ENTER per proseguire.")
@@ -90,11 +94,9 @@ def chiedi_data():
     return y
 
 ## Funzioni che servono per la manipolazione di file di input e output
-def crea_cartella(descrizione, data_e_ora=timestamp()):
+def crea_cartella(descrizione, data_e_ora=timestamp_breve()):
     '''Crea una sottocartella nella cartella di esecuzione dello script
-    Se l'argomento data_e_ora è nullo, usa un timestamp al suo posto.
-    (Quindi si può modificare con un data_e_ora=timestamp :)'''
-    #x = timestamp() if data_e_ora=="" else data_e_ora
+    Se l'argomento data_e_ora è nullo, usa un timestamp breve al suo posto.'''
     path="./lotti/" + data_e_ora + "-" + descrizione + "/"
     if not os.path.isdir(path):
         os.mkdir(path)
@@ -797,7 +799,7 @@ while CONTINUARE is True:
         print("File CSV trovato.\n")
 
         # Inizializzo la cartella di lotto e i file di output e log
-        DATA_LOTTO = timestamp()
+        DATA_LOTTO = timestamp_breve()
         PATH=crea_cartella(ref, DATA_LOTTO) # crea la cartella di lavoro del lotto
         LOTTO_LOG=PATH + DATA_LOTTO + "-" + "lotto.log"
         RICEVUTA_JSON = PATH + DATA_LOTTO + "-ricevuta.json"
@@ -888,11 +890,21 @@ while CONTINUARE is True:
     elif scelta == "4":
         print("\n" + scelta + " - Recupero risultati di precedente interrogazione multipla.")
         print("\nHai bisogno di una ricevuta in formato json di un precedente invio.")
-        print("Ti conviene copiarla dalla cartella di lotto "\
-              "alla cartella di questo programma e rinominarla.")
-        nome_file_ricevuta = input("\nInserisci il nome del file con la ricevuta: ")
+        print("Puoi sceglierla da un elenco oppure indicare il file manualmente.")
+        print("Ti conviene copiarla dalla cartella di lotto alla cartella di questo programma e rinominarla.")
+        RICEVUTE = []
+        for cartella, sottocartelle, files in os.walk(".\\lotti\\"):
+            for file in files:
+                if file[-13:] == "ricevuta.json":
+                    RICEVUTE.append(os.path.join(cartella, file))
+        ULTIME_RICEVUTE = RICEVUTE[-5:]
+        ULTIME_RICEVUTE.append("Inserisci manualmente.")
         RICEVUTA_TROVATA = False
         while RICEVUTA_TROVATA is False:
+            print("\nRicevute degli ultimi lotti caricati:")
+            nome_file_ricevuta = pyip.inputMenu(ULTIME_RICEVUTE, numbered = True)
+            if nome_file_ricevuta == "Inserisci manualmente.":
+                nome_file_ricevuta = input("Inserisci il nome del file della ricevuta: ")
             try:
                 with open(nome_file_ricevuta, "rb") as file:
                     DATI_LOTTO = json.load(file)
@@ -903,17 +915,7 @@ while CONTINUARE is True:
                     CHIAVE_CF = DATI_LOTTO["chiaveCF"]
                     RICEVUTA_TROVATA = True
             except:
-                print(f"\nFIle {nome_file_ricevuta} non trovato.")
-                RICEVUTE = []
-                for cartella, sottocartelle, files in os.walk(".\\lotti\\"):
-                    for file in files:
-                        if file[-13:] == "ricevuta.json":
-                            RICEVUTE.append(os.path.join(cartella, file))
-                print("\nPer aiutarti, queste sono le ultime cinque ricevute:")
-                for file in RICEVUTE[-5:]:
-                    print(file)
-                nome_file_ricevuta = input(
-                    "\nInserisci di nuovo il nome del file della ricevuta: ")
+                print(f"\nFile {nome_file_ricevuta} non trovato.")
         print("\nFile della ricevuta trovato.")
 
         ## Inizializzazione di cartella di lotto, file di output e logging

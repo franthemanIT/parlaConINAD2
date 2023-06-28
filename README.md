@@ -1,5 +1,16 @@
 # parlaConINAD2
 
+** AGGIORNAMENTO **
+Su sistemi Windows è possibile **trasformare lo script in un eseguibile** .exe che mantiene la stessa logica di funzionamento.  
+
+Istruzioni:
+- SE MANCA: pip install pyinstaller
+- pyinstaller parlaConINAD2 --onefile
+Sotto la cartella "dists" si recupera l'eseguibile Windows.
+Utile per usarlo su PC senza Python installato.
+
+
+# Descrizione
 Script Python **didattico** per interagire con INAD, l'Indice nazionale dei domicili digitali, tramite la PDND (Piattaforma Digitale Nazionale Dati - https://domiciliodigitale.gov.it).  
 Lo script funziona nell'**ambiente di collaudo** di PDND e di INAD.  
 Per l'uso in ambiente di produzione dovrebbe essere sufficiente cambiare il valore delle variabili degli endpoint di PDND e INAD.  
