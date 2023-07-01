@@ -94,7 +94,7 @@ Soprattutto, per implementare **fuzioni sensate** e un **uso di INAD legittimo e
 # Prerequisiti Python
 
 Gli script fanno uso di alcuni moduli, fra cui:
-- jose;
+- python-jose;
 - requests;
 - cryptography;
 - urllib3;
@@ -102,6 +102,8 @@ Gli script fanno uso di alcuni moduli, fra cui:
 - pwinput,
 che potrebbero non essere parte dell'installazione standard di Python. 
 Verificare di averli installati.  
+
+**Per ulteriori dettagli vedere il file requirements.txt** e *pip install -r .\requirements.txt*.
 
 # Consigli per l'uso dello script
 
