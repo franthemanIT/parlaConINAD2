@@ -8,7 +8,7 @@ Istruzioni:
 - SE MANCA: pip install pyinstaller
 - pyinstaller parlaConINAD2 --onefile
 
-Sotto la cartella "dists" si recupera l'eseguibile Windows.
+Sotto la cartella "dist/" si recupera l'eseguibile Windows.
 Utile per usarlo su PC senza Python installato.
 
 
@@ -21,7 +21,7 @@ L'interazione avviene tramite linee di comando:
 - per interrogazioni singole con richiesta di inserire i dati della richiesta;
 - per interrogazioni massive con richiesta di fornire un file CSV con una colonna di codici fiscali. Lo script **restituisce lo stesso CSV con aggiunta dei dati del domicilio digitale**.
 
-Rispetto alla precedente versione di parlaConINAD:
+Rispetto alla precedente versione di parlaConINAD (https://github.com/franthemanIT/parlaConINAD):
 - c'è un unico fle di script che ingloba la definizione delle funzioni e tutte le operazioni messe a disposizione da INAD;
 - anche la configurazione, al primo avvio, è interattiva da riga di comando;
 - i dati di configurazione sono cifrati e per avviare lo script occorre una password (vedi sotto).
@@ -44,18 +44,18 @@ Per la generazione delle chiavi è disponibile lo script **generatore/generatore
 
 **Configurazione**:
 Al primo avvio lo script richiede alcune informazioni:
-- una password per accedere allo script e cifrare i dati di configurazione. La password non è recuperabile, quindi occorre custodirla in un posto sicuro e segreto;
-- i dati del client e-service INAD. Questi sono recuperabili dal back office PDND: conviene tenere la pagina del client e-services sulla PDND apera e fare copia e incolla;
-- la chiave privata associata alla chiave pubblica inserita nel client e-service: occorre salvare il file della chiave privata temporaneamente nella cartella di parlaConINAD2 e, una volta configurata, spostarlo.
+- una **password** per accedere allo script e cifrare i dati di configurazione. La password non è recuperabile, quindi occorre custodirla in un posto sicuro e segreto;
+- i dati del **client e-service INAD**. Questi sono recuperabili dal back office PDND: conviene tenere la pagina del client e-services sulla PDND apera e fare copia e incolla;
+- la **chiave privata** associata alla chiave pubblica inserita nel client e-service: occorre salvare il file della chiave privata temporaneamente nella cartella di parlaConINAD2 e, una volta configurata, spostarlo.
 
-La password deve soddisfare i seguenti requisiti (modificabile tramite l'espressione regolare RE_PASSWORD):
+La password deve soddisfare i seguenti criteri di robustezza (modificabile tramite l'espressione regolare RE_PASSWORD):
 - ha lunghezza da 8 a 20 caratteri;
 - contiene una lettera maiuscola;
 - contiene una lettera minuscola;
 - contiene un numero;
 - contiene un carattere speciale (fra !, #, $, &, ?).
 
-Se si perde la password occorre cancellare i file "INAD.cfg" e "chiave.priv" e ripetere la configurazione.
+Se si perde la password occorre cancellare i file "INAD.cfg" e "chiave.priv" e ripetere la configurazione.  
 I file di log e le cartelle di lotto di precedenti estrazioni multiple non andranno perduti.
 
 # Avvertenze e misure di sicurezza
