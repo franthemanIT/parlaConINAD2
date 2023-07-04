@@ -45,7 +45,7 @@ Per la generazione delle chiavi è disponibile lo script **generatore/generatore
 **Configurazione**:
 Al primo avvio lo script richiede alcune informazioni:
 - una **password** per accedere allo script e cifrare i dati di configurazione. La password non è recuperabile, quindi occorre custodirla in un posto sicuro e segreto;
-- i dati del **client e-service INAD**. Questi sono recuperabili dal back office PDND: conviene tenere la pagina del client e-services sulla PDND apera e fare copia e incolla;
+- i dati del **client e-service INAD**. Questi sono recuperabili dal back office PDND: conviene tenere la pagina PDND del client e-service e fare copia e incolla;
 - la **chiave privata** associata alla chiave pubblica inserita nel client e-service: occorre salvare il file della chiave privata temporaneamente nella cartella di parlaConINAD2 e, una volta configurata, spostarlo.
 
 La password deve soddisfare i seguenti criteri di robustezza (modificabile tramite l'espressione regolare RE_PASSWORD):
@@ -131,8 +131,8 @@ Si può comunque interrompere lo script (CTRL+C) e recuperare i risultati in seg
 
 **4 - Recupero dei risultati**
 
-Lo script richiede di inserire il nome del file .json della ricevuta.  
-Conviene copiarlo dalla cartella di lotto nella cartella di parlaConINAD.
+Lo script propone una lista delle ultime liste caricate o, in alternativa, richiede di inserire il nome del file .json della ricevuta.  
+Se si vuole indicare il nome del file della ricevuta, conviene copiarlo dalla cartella di lotto alla cartella di parlaConINAD.
 
 L'interazione prosegue poi come nella funzione 3: interrogazione periodica dello stato di elaborazione, recupero dei risultati e produzione della copia elaborata del file CSV di partenza.
 
