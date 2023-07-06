@@ -25,7 +25,7 @@ import pyinputplus as pyip
 # URL delle API da chiamare
 BASE_URL_AUTH = "https://auth.uat.interop.pagopa.it/token.oauth2" #Ambiente PDND di collaudo
 BASE_URL_INAD = "https://domiciliodigitaleapi.oscl.infocamere.it/rest/inad/v1/domiciliodigitale"
-
+# BASE_URL_INAD = "https://api.inad.gov.it/rest/inad/v1/domiciliodigitale"
 #nome del file di log generale
 LOG_FILE_NAME="INAD.log"
 
@@ -850,6 +850,7 @@ while CONTINUARE is True:
             ricevuta = invio.json()
             ricevuta["nomeFileDati"] = NOME_FILE_DATI
             ricevuta["cartellaDiLavoro"] = PATH
+            ricevuta["utente"] = CALLING_USER
             ricevuta["data_lotto"] = DATA_LOTTO
             ricevuta["chiaveCF"] = CHIAVE_CF
             salva_dizionario(ricevuta, RICEVUTA_JSON)
