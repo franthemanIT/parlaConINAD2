@@ -159,6 +159,7 @@ cython_debug/
 *.pem
 *.pub
 INAD.cfg
+*.cfg
 chiave.priv
 INAD.tkn
 20*

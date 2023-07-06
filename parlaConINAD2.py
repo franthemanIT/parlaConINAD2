@@ -22,10 +22,16 @@ import requests
 import pwinput
 import pyinputplus as pyip
 
-# URL delle API da chiamare
-BASE_URL_AUTH = "https://auth.uat.interop.pagopa.it/token.oauth2" #Ambiente PDND di collaudo
-BASE_URL_INAD = "https://domiciliodigitaleapi.oscl.infocamere.it/rest/inad/v1/domiciliodigitale"
-# BASE_URL_INAD = "https://api.inad.gov.it/rest/inad/v1/domiciliodigitale"
+##URL E AUDIENCE
+
+#BASE_URL_AUTH = "https://auth.uat.interop.pagopa.it/token.oauth2" #Ambiente PDND di collaudo
+#BASE_URL_INAD = "https://domiciliodigitaleapi.oscl.infocamere.it/rest/inad/v1/domiciliodigitale"
+#AUD_INTEROP = "auth.uat.interop.pagopa.it/client-assertion"
+
+BASE_URL_AUTH = "https://auth.interop.pagopa.it/token.oauth2" #Ambiente PDND di produzione
+BASE_URL_INAD = "https://api.inad.gov.it/rest/inad/v1/domiciliodigitale"
+AUD_INTEROP = "auth.interop.pagopa.it/client-assertion"
+
 #nome del file di log generale
 LOG_FILE_NAME="INAD.log"
 
@@ -522,13 +528,13 @@ if os.path.exists("INAD.cfg") is False:
                   "typ" : "JWT",
                   "iss" : "",
                   "sub" : "",
-                  "aud" : "auth.uat.interop.pagopa.it/client-assertion",
+                  "aud" : AUD_INTEROP,
                   "alg" : "RS256",
                   "PurposeID" : "",
                   "Client_id" : "",
                   "Client_assertion_type" : "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
                   "Grant_type" : "client_credentials",
-                  "baseURL" : "https://domiciliodigitaleapi.oscl.infocamere.it/rest/inad/v1/domiciliodigitale"
+                  "baseURL" : BASE_URL_INAD
                  }
     lista = []
     for i in INAD:
