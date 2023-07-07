@@ -58,6 +58,10 @@ La password deve soddisfare i seguenti criteri di robustezza (modificabile trami
 Se si perde la password occorre cancellare i file "INAD.cfg" e "chiave.priv" e ripetere la configurazione.  
 I file di log e le cartelle di lotto di precedenti estrazioni multiple non andranno perduti.
 
+**Per installazioni su più postazioni:** è possible usare lo script configuratore/configuraINAD.py.  
+Questo crea due file cifrati dalla "password master": "INAD.master.cfg" e "chiave.master.priv".  
+Se i due file sono copiati nella cartella di lavoro di parlaConINAD2, al primo avvio è possibile scegliere l'opzione "Configurazione da file master" (occorre inserire la password master).
+
 # Avvertenze e misure di sicurezza
 
 Si tratta di un'**iniziativa didattica**, con lo scopo di:
