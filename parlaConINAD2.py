@@ -427,9 +427,9 @@ def verifica_stato_lista(token, id_lista, output_json, pausa): #verifica = verif
                        "i risultati dell'estrazione in seguito.")
                 termina()
         elif verify.status_code in [400, 401, 403, 404, 500, 503]:
-            stampa("Il server ha risposto: " + verify.status_code +".")
+            stampa("Il server ha risposto: " + str(verify.status_code) +".")
             for i in verify.json():
-                stampa(i +": " +verify.json()[i])
+                stampa(i +": " +str(verify.json()[i]))
             stampa("Termino il programma. Tu cerca di capire cosa non va ;)")
             termina()
         else:
@@ -866,7 +866,7 @@ while CONTINUARE is True:
             stampa("Puoi interrompere l'esecuzione del programma (CTRL+C) e "\
                    "recuperare i risultati in seguito.")
         elif invio.status_code in [400, 404, 500, 503]:
-            stampa("Il server ha risposto: " + invio.status_code +".")
+            stampa("Il server ha risposto: " + str(invio.status_code) +".")
             for i in invio.json():
                 stampa(i +": " +invio.json()[i])
             stampa("Termino il programma. Tu cerca di capire cosa non va ;)")
