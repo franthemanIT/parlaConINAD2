@@ -204,6 +204,17 @@ def decifra_file(file_da_decifrare, chiave, output_file = ""):
     with open(output_file, "wb") as f:
         f.write(originale)
 
+def ricifra_file(file_da_ricifrare, chiave1, chiave2, output_file):
+    '''Decifra un file cifrato con chiave 1 o la cifra con chiave2'''
+    with open(file_da_ricifrare, "rb") as f:
+        cifrato = f.read()
+        fernet = Fernet(chiave1)
+        in_chiaro = fernet.decrypt(cifrato)
+        fernet = Fernet(chiave2)
+        ricifrato = fernet.encrypt(in_chiaro)
+    with open(output_file, "wb") as f:
+        f.write(ricifrato)
+        
 def recupera_chiave(file_cifrato, chiave):
     '''Recupera la chiave privata da un file cifrato con cifraChiave.
     In realtà decifra qualsiasi file cifrato e lo restituisce come risultato.'''
@@ -510,9 +521,8 @@ print("Benvenuto "+CALLING_USER+".")
 if os.path.exists("lotti/") is False:
     os.mkdir("./lotti/")
 if os.path.exists("INAD.cfg") is False:
+    CONFIGURATO = False
     print("Il programma non è configurato.")
-    print("Copia il file della chiave privata associata alla chiave pubblica "\
-        "del client e-service INAD nella cartella di questo programma.")
     print("Ti chiederò di: ")
     print("- scegliere una password")
     print("- inserire i dati di configurazione del client e-service PDND di INAD;")
@@ -520,48 +530,79 @@ if os.path.exists("INAD.cfg") is False:
     chiave = imposta_password()
     print("Password impostata. \nAnnotala in un luogo segreto e sicuro: "\
           "NON potrai recuperarla in alcun modo.")
-    print("Configuriamo i dati del client e-service di INAD. Li trovi nel back-office della PDND.")
-    #seguono i parametri che servono per contattare il client e-service INAD su PDND.
-    #I predefiniti si possono modificare o sostituire con "" per inserirli interattivamente.
-    INAD = {
-                  "kid" : "",
-                  "typ" : "JWT",
-                  "iss" : "",
-                  "sub" : "",
-                  "aud" : AUD_INTEROP,
-                  "alg" : "RS256",
-                  "PurposeID" : "",
-                  "Client_id" : "",
-                  "Client_assertion_type" : "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-                  "Grant_type" : "client_credentials",
-                  "baseURL" : BASE_URL_INAD
-                 }
-    lista = []
-    for i in INAD:
-        if INAD[i] == "":
-            lista.append(i)
-    for i in lista:
-        value = input(i+": ")
-        INAD[i] = value
-    cifra_dizionario(INAD, chiave, "INAD.cfg")
-    print("Dati del client e-service configurati.")
-    print("Configuriamo la chiave privata.")
-    nome_file_chiave = input("Nome del file della chiave privata (es.: key.priv): ")
-    CHIAVE_TROVATA = False
-    while CHIAVE_TROVATA is False:
-        if os.path.exists(nome_file_chiave):
-            CHIAVE_TROVATA = True
-            print("File trovato.")
-            cifra_file(nome_file_chiave, chiave, "chiave.priv")
-            print("Ho configurato la chiave in un file cifrato. "\
-                  "Cancella il file " + nome_file_chiave + " dalla cartella del programma.")
+    if (os.path.exists("INAD.master.cfg") and os.path.exists("chiave.master.priv")) is True:
+        print("Scegli: ")
+        tipo_configurazione = pyip.inputMenu(["Configurazione manuale", "Configurazione da file master"],\
+                                             numbered = True)
+        if  tipo_configurazione == "Configurazione manuale":
+            pass   
         else:
-            nome_file_chiave = input(
-                "File "+ nome_file_chiave + "non trovato. Verifica e "\
-                "inserisci di nuovo il nome del file della chiave privata: "
-                )
-    print("La configurazione è terminata. \n"\
-          "Ricorda la password per avviare i programmi di interazione con INAD.")
+            print("\nHai bisogno della password master.\n")
+            passwM = pwinput.pwinput(prompt = "Inserici la password dei file master: ")
+            passwordM = passwM.encode()
+            CHIAVEM = base64.urlsafe_b64encode(kdf().derive(passwordM))
+            passwM = ""
+            passwordM = b""
+            PASSWORDM_CORRETTA = False
+            while PASSWORDM_CORRETTA is False:
+                try:
+                    ricifra_file("INAD.master.cfg", CHIAVEM, chiave, "INAD.cfg")
+                    print("Configurazione di INAD importata.")
+                    PASSWORDM_CORRETTA = True
+                except:
+                        print("La password NON è corretta.")
+                        passwM = pwinput.pwinput()
+                        passwordM = passwM.encode()
+                        CHIAVEM = base64.urlsafe_b64encode(kdf().derive(passwordM))
+                        passwM = ""
+                        passwordM = b""
+            ricifra_file("chiave.master.priv", CHIAVEM, chiave, "chiave.priv")
+            CHIAVEM = ""
+            CONFIGURATO = True
+    if CONFIGURATO is False:
+        print("Configuriamo i dati del client e-service di INAD. Li trovi nel back-office della PDND.")
+        #seguono i parametri che servono per contattare il client e-service INAD su PDND.
+        #I predefiniti si possono modificare o sostituire con "" per inserirli interattivamente.
+        INAD = {
+                      "kid" : "",
+                      "typ" : "JWT",
+                      "iss" : "",
+                      "sub" : "",
+                      "aud" : AUD_INTEROP,
+                      "alg" : "RS256",
+                      "PurposeID" : "",
+                      "Client_id" : "",
+                      "Client_assertion_type" : "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+                      "Grant_type" : "client_credentials",
+                      "baseURL" : BASE_URL_INAD
+                     }
+        lista = []
+        for i in INAD:
+            if INAD[i] == "":
+                lista.append(i)
+        for i in lista:
+            value = input(i+": ")
+            INAD[i] = value
+        cifra_dizionario(INAD, chiave, "INAD.cfg")
+        print("Dati del client e-service configurati.")
+        print("Configuriamo la chiave privata.")
+        print("Ti conviene copiare il file con la chiave privata nella cartella del programma.")
+        nome_file_chiave = input("Nome del file della chiave privata (es.: key.priv): ")
+        CHIAVE_TROVATA = False
+        while CHIAVE_TROVATA is False:
+            if os.path.exists(nome_file_chiave):
+                CHIAVE_TROVATA = True
+                print("File trovato.")
+                cifra_file(nome_file_chiave, chiave, "chiave.priv")
+                print("Ho configurato la chiave in un file cifrato. "\
+                      "Cancella il file " + nome_file_chiave + " dalla cartella del programma.")
+            else:
+                nome_file_chiave = input(
+                    "File "+ nome_file_chiave + "non trovato. Verifica e "\
+                    "inserisci di nuovo il nome del file della chiave privata: "
+                    )
+        print("La configurazione è terminata. \n"\
+              "Ricorda la password per avviare i programmi di interazione con INAD.")
 elif os.path.exists("chiave.priv") is False:
     print("IL programma è configurato a metà. Manca la chiave privata "\
           "da usare per il service e-client INAD.")
@@ -569,17 +610,24 @@ elif os.path.exists("chiave.priv") is False:
     print("Se non la ricordi, cancella il file \'INAD.cfg\' "\
           "dalla cartella del programma e avvia di nuovo l'installazione.")
     passw = pwinput.pwinput()
-    passw2 = pwinput.pwinput(prompt= "Ripeti la password: ")
-    while passw != passw2:
-        print("Le password non coincidono. Ripeti.")
-        passw = pwinput.pwinput()
-        passw2 = pwinput.pwinput(prompt= "Ripeti la password: ")
     password = passw.encode()
     chiave = base64.urlsafe_b64encode(kdf().derive(password))
     passw = ""
-    passw2 = ""
     password = b""
-    print("Le password coincidono.")
+    PASSWORD_CORRETTA = False
+    while PASSWORD_CORRETTA is False:
+        with open("INAD.cfg", "r") as f:
+            try:
+                INAD = decifra_dizionario("INAD.cfg", chiave)
+                print("La password è corretta.")
+                PASSWORD_CORRETTA = True
+            except:
+                print("La password NON è corretta.")
+                passw = pwinput.pwinput()
+                password = passw.encode()
+                chiave = base64.urlsafe_b64encode(kdf().derive(password))
+                passw = ""
+                password = b""
     print("Copia il file con la chiave privata associata "\
           "al client e-service INAD nella cartella del programma.")
     nome_file_chiave = input("Nome del file della chiave privata (es.: key.priv): ")
@@ -593,7 +641,7 @@ elif os.path.exists("chiave.priv") is False:
                   "Cancella il file " + nome_file_chiave + " dalla cartella del programma.")
         else:
             nome_file_chiave = input(
-                "File "+ nome_file_chiave + "non trovato. \
+                "File "+ nome_file_chiave + " non trovato. \n \
                 Verifica e inserisci di nuovo il nome del file della chiave privata: "
                 )
     print("La configurazione è terminata. \n"\
