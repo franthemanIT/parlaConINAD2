@@ -899,7 +899,7 @@ while CONTINUARE is True:
         invio = carica_lista(token, LISTA_CF, ref)
         L = len(LISTA_CF)
         #PAUSA = 120 + 2 * L
-        PAUSA = 320  #usato in attesa di capire quale sia l'intervallo corretto
+        PAUSA = 720  #Indicazione AGID: intervallo di polling fra 10 e 15 minuti
         if invio.status_code == 202:
             ricevuta = invio.json()
             ricevuta["nomeFileDati"] = NOME_FILE_DATI
@@ -993,7 +993,7 @@ while CONTINUARE is True:
             LISTA_CF.append(i[CHIAVE_CF])
         L = len(LISTA_CF)
         #PAUSA = 120 + 2 * L
-        PAUSA = 320  #in attesa di capire come definirla in funzione di L
+        PAUSA = 720  #Indicazione AGID: intervallo di polling fra 10 e 15 minuti
         stampa("Informazioni dal file "+nome_file_ricevuta +" importate.")
         stampa("Inizio il recupero della richiesta con id: "+id_lista +".")
 
