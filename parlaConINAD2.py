@@ -760,7 +760,7 @@ while CONTINUARE is True:
         elif estrazione.status_code == 400:
             print("\nRichiesta mal formulata: " +estrazione.json()["detail"])
         elif estrazione.status_code == 401:
-            print("\nNon autorizzato: " + estrazione.json()["error"])
+            print("\nNon autorizzato: " + estrazione.json()["detail"])
         elif estrazione.status_code == 403:
             print:("\nOperazione non consentita: " + estrazione.json()["detail"])
         elif estrazione.status_code == 404:
@@ -806,7 +806,7 @@ while CONTINUARE is True:
         elif verifica.status_code == 400:
             print("Richiesta mal formulata: " +verifica.json()["detail"])
         elif verifica.status_code == 401:
-            print("Non autorizzato: " + verifica.json()["error"])
+            print("Non autorizzato: " + verifica.json()["detail"])
             print("Di seguito il contenuto completo della risposta: ")
             print(verifica.json())
         elif verifica.status_code == 403:
