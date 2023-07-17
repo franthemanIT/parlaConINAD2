@@ -957,8 +957,11 @@ while CONTINUARE is True:
         RICEVUTA_TROVATA = False
         while RICEVUTA_TROVATA is False:
             print("\nRicevute degli ultimi lotti caricati:")
-            nome_file_ricevuta = pyip.inputMenu(ULTIME_RICEVUTE, numbered = True)
-            if nome_file_ricevuta == "Inserisci manualmente.":
+            nome_file_ricevuta = pyip.inputMenu(ULTIME_RICEVUTE, numbered = True, blank = True)
+            if nome_file_ricevuta == '':
+                print("Scelta non corretta. Riprova.")
+                continue
+            elif nome_file_ricevuta == "Inserisci manualmente.":
                 nome_file_ricevuta = input("Inserisci il nome del file della ricevuta: ")
             try:
                 with open(nome_file_ricevuta, "rb") as file:
