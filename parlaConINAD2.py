@@ -27,10 +27,12 @@ import pyinputplus as pyip
 #BASE_URL_AUTH = "https://auth.uat.interop.pagopa.it/token.oauth2" #Ambiente PDND di collaudo
 #BASE_URL_INAD = "https://domiciliodigitaleapi.oscl.infocamere.it/rest/inad/v1/domiciliodigitale"
 #AUD_INTEROP = "auth.uat.interop.pagopa.it/client-assertion"
+#DURATA_TOKEN = 86400 #3600 in produzione, 86400 in collaudo (in secondi)
 
 BASE_URL_AUTH = "https://auth.interop.pagopa.it/token.oauth2" #Ambiente PDND di produzione
 BASE_URL_INAD = "https://api.inad.gov.it/rest/inad/v1/domiciliodigitale"
 AUD_INTEROP = "auth.interop.pagopa.it/client-assertion"
+DURATA_TOKEN = 3600 #3600 in produzione, 86400 in collaudo (in secondi)
 
 #nome del file di log generale
 LOG_FILE_NAME="INAD.log"
@@ -508,8 +510,6 @@ def elabora_lotto(dizionario_in, dizionario_join, colonna_join, file_out, csv_ou
            "e/o ha indicato una professione, nel CSV creato trovi ulteriori colonne.")
     return dizionario_out
     
-DURATA_TOKEN = 86400
-
 #####################################
 ###INIZIO DELLO SCRIPT INTERATTIVO###
 #####################################
