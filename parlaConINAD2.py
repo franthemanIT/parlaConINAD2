@@ -301,8 +301,6 @@ def create_m2m_client_assertion(kid, alg, typ, iss, sub, aud, key, purposeID = "
 
 def token_request(client_id, client_assertion, client_assertion_type, grant_type):
     '''Invia l'asserzione firmata a PDND e recupea il token di autenticazione per INAD.'''
-    #client_assertion_type = datiINAD.Client_assertion_type
-    #grant_type = datiINAD.Grant_type
     body = {
         "client_id" : client_id,
         "client_assertion" : client_assertion,
