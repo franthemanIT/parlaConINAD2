@@ -708,7 +708,7 @@ while CONTINUARE is True:
                     print("Token valido.")
                     TOKEN_DISPONIBILE = True
                 else:
-                    print("\Token non valido.")
+                    print("Token non valido.")
                     os.remove("INAD.tkn")
             except:
                 os.remove("INAD.tkn")
