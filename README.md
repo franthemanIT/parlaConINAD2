@@ -6,7 +6,7 @@ Su sistemi Windows è possibile **trasformare lo script in un eseguibile** .exe 
 
 Istruzioni:
 - SE MANCA: pip install pyinstaller
-- pyinstaller parlaConINAD2 --onefile
+- pyinstaller parlaConINAD2.py --onefile
 
 Sotto la cartella "dist/" si recupera l'eseguibile Windows.
 Utile per usarlo su PC senza Python installato.
