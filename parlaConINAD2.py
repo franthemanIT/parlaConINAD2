@@ -278,7 +278,7 @@ def get_key(key_path):
 
 def create_m2m_client_assertion(kid, alg, typ, iss, sub, aud, key, purposeID = ""):
     '''Crea l'asserzione JWT e la firma, per ottenere il token da PDND.'''
-    issued = datetime.datetime.now()
+    issued = datetime.datetime.now(datetime.timezone.utc)
     delta = datetime.timedelta(minutes=2)
     expire_in = issued + delta
     jti = uuid.uuid4()
